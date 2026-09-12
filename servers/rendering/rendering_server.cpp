@@ -2841,6 +2841,7 @@ void RenderingServer::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("camera_set_frustum", "camera", "size", "offset", "z_near", "z_far"), &RenderingServer::camera_set_frustum);
 	ClassDB::bind_method(D_METHOD("camera_set_transform", "camera", "transform"), &RenderingServer::camera_set_transform);
 	ClassDB::bind_method(D_METHOD("camera_set_cull_mask", "camera", "layers"), &RenderingServer::camera_set_cull_mask);
+	ClassDB::bind_method(D_METHOD("camera_set_additional_shadow_cull_mask", "camera", "layers"), &RenderingServer::camera_set_additional_shadow_cull_mask);
 	ClassDB::bind_method(D_METHOD("camera_set_environment", "camera", "env"), &RenderingServer::camera_set_environment);
 	ClassDB::bind_method(D_METHOD("camera_set_camera_attributes", "camera", "effects"), &RenderingServer::camera_set_camera_attributes);
 	ClassDB::bind_method(D_METHOD("camera_set_compositor", "camera", "compositor"), &RenderingServer::camera_set_compositor);

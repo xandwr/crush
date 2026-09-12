@@ -1448,7 +1448,7 @@ void LightStorage::shadow_atlas_set_quadrant_subdivision(RID p_atlas, int p_quad
 	} while (swaps > 0);
 }
 
-bool LightStorage::shadow_atlas_update_light(RID p_atlas, RID p_light_instance, float p_coverage, uint64_t p_light_version) {
+bool LightStorage::shadow_atlas_update_light(RID p_atlas, RID p_light_instance, float p_coverage, uint64_t p_light_version, uint32_t p_caster_mask) {
 	ShadowAtlas *shadow_atlas = shadow_atlas_owner.get_or_null(p_atlas);
 	ERR_FAIL_NULL_V(shadow_atlas, false);
 
@@ -1508,10 +1508,11 @@ bool LightStorage::shadow_atlas_update_light(RID p_atlas, RID p_light_instance, 
 
 		// Only re-allocate if a better option is available, and enough time has passed.
 		should_realloc = shadow_atlas->quadrants[old_quadrant].subdivision != (uint32_t)best_subdiv && (tick - shadow_atlas->quadrants[old_quadrant].shadows[old_shadow].alloc_tick > shadow_atlas_realloc_tolerance_msec);
-		should_redraw = shadow_atlas->quadrants[old_quadrant].shadows[old_shadow].version != p_light_version;
+		should_redraw = shadow_atlas->quadrants[old_quadrant].shadows[old_shadow].version != p_light_version || shadow_atlas->quadrants[old_quadrant].shadows[old_shadow].caster_mask != p_caster_mask;
 
 		if (!should_realloc) {
 			shadow_atlas->quadrants[old_quadrant].shadows.write[old_shadow].version = p_light_version;
+			shadow_atlas->quadrants[old_quadrant].shadows.write[old_shadow].caster_mask = p_caster_mask;
 			// Already existing, see if it should redraw or it's just OK.
 			return should_redraw;
 		}
@@ -1544,6 +1545,7 @@ bool LightStorage::shadow_atlas_update_light(RID p_atlas, RID p_light_instance, 
 		sh->owner_is_omni = is_omni;
 		sh->alloc_tick = tick;
 		sh->version = p_light_version;
+		sh->caster_mask = p_caster_mask;
 
 		li->shadow_atlases.insert(p_atlas);
 

@@ -157,6 +157,9 @@
 		</method>
 	</methods>
 	<members>
+		<member name="additional_shadow_cull_mask" type="int" setter="set_additional_shadow_cull_mask" getter="get_additional_shadow_cull_mask" default="0">
+			Additional geometry layers that contribute to directional and positional shadows without being rendered by this camera. The effective camera shadow mask is the union of this mask and [member cull_mask], further filtered by each light's [member Light3D.shadow_caster_mask]. This does not make hidden nodes cast shadows, change light visibility, or provide screen-space depth, ambient occlusion, or reflections from excluded geometry.
+		</member>
 		<member name="attributes" type="CameraAttributes" setter="set_attributes" getter="get_attributes">
 			The [CameraAttributes] to use for this camera.
 		</member>

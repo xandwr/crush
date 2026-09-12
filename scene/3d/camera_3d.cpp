@@ -660,6 +660,8 @@ void Camera3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_v_offset"), &Camera3D::get_v_offset);
 	ClassDB::bind_method(D_METHOD("set_cull_mask", "mask"), &Camera3D::set_cull_mask);
 	ClassDB::bind_method(D_METHOD("get_cull_mask"), &Camera3D::get_cull_mask);
+	ClassDB::bind_method(D_METHOD("set_additional_shadow_cull_mask", "mask"), &Camera3D::set_additional_shadow_cull_mask);
+	ClassDB::bind_method(D_METHOD("get_additional_shadow_cull_mask"), &Camera3D::get_additional_shadow_cull_mask);
 	ClassDB::bind_method(D_METHOD("set_environment", "env"), &Camera3D::set_environment);
 	ClassDB::bind_method(D_METHOD("get_environment"), &Camera3D::get_environment);
 	ClassDB::bind_method(D_METHOD("set_attributes", "env"), &Camera3D::set_attributes);
@@ -683,6 +685,7 @@ void Camera3D::_bind_methods() {
 	//ClassDB::bind_method(D_METHOD("_camera_make_current"),&Camera::_camera_make_current );
 
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "keep_aspect", PROPERTY_HINT_ENUM, "Keep Width,Keep Height"), "set_keep_aspect_mode", "get_keep_aspect_mode");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "additional_shadow_cull_mask", PROPERTY_HINT_LAYERS_3D_RENDER), "set_additional_shadow_cull_mask", "get_additional_shadow_cull_mask");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "cull_mask", PROPERTY_HINT_LAYERS_3D_RENDER), "set_cull_mask", "get_cull_mask");
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "environment", PROPERTY_HINT_RESOURCE_TYPE, Environment::get_class_static()), "set_environment", "get_environment");
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "attributes", PROPERTY_HINT_RESOURCE_TYPE, "CameraAttributesPractical,CameraAttributesPhysical"), "set_attributes", "get_attributes");
@@ -769,6 +772,15 @@ void Camera3D::set_cull_mask(uint32_t p_layers) {
 
 uint32_t Camera3D::get_cull_mask() const {
 	return layers;
+}
+
+void Camera3D::set_additional_shadow_cull_mask(uint32_t p_mask) {
+	additional_shadow_cull_mask = p_mask;
+	RenderingServer::get_singleton()->camera_set_additional_shadow_cull_mask(camera, p_mask);
+}
+
+uint32_t Camera3D::get_additional_shadow_cull_mask() const {
+	return additional_shadow_cull_mask;
 }
 
 void Camera3D::set_cull_mask_value(int p_layer_number, bool p_value) {

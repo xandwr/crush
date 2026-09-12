@@ -2588,7 +2588,7 @@ bool LightStorage::_shadow_atlas_find_omni_shadows(ShadowAtlas *shadow_atlas, in
 	return false;
 }
 
-bool LightStorage::shadow_atlas_update_light(RID p_atlas, RID p_light_instance, float p_coverage, uint64_t p_light_version) {
+bool LightStorage::shadow_atlas_update_light(RID p_atlas, RID p_light_instance, float p_coverage, uint64_t p_light_version, uint32_t p_caster_mask) {
 	ShadowAtlas *shadow_atlas = shadow_atlas_owner.get_or_null(p_atlas);
 	ERR_FAIL_NULL_V(shadow_atlas, false);
 
@@ -2647,10 +2647,11 @@ bool LightStorage::shadow_atlas_update_light(RID p_atlas, RID p_light_instance, 
 		old_shadow = old_key & SHADOW_INDEX_MASK;
 
 		should_realloc = shadow_atlas->quadrants[old_quadrant].subdivision != (uint32_t)best_subdiv && (tick - shadow_atlas->quadrants[old_quadrant].shadows[old_shadow].alloc_tick > shadow_atlas_realloc_tolerance_msec);
-		should_redraw = shadow_atlas->quadrants[old_quadrant].shadows[old_shadow].version != p_light_version;
+		should_redraw = shadow_atlas->quadrants[old_quadrant].shadows[old_shadow].version != p_light_version || shadow_atlas->quadrants[old_quadrant].shadows[old_shadow].caster_mask != p_caster_mask;
 
 		if (!should_realloc) {
 			shadow_atlas->quadrants[old_quadrant].shadows.write[old_shadow].version = p_light_version;
+			shadow_atlas->quadrants[old_quadrant].shadows.write[old_shadow].caster_mask = p_caster_mask;
 			//already existing, see if it should redraw or it's just OK
 			return should_redraw;
 		}
@@ -2689,6 +2690,7 @@ bool LightStorage::shadow_atlas_update_light(RID p_atlas, RID p_light_instance, 
 		sh->owner = p_light_instance;
 		sh->alloc_tick = tick;
 		sh->version = p_light_version;
+		sh->caster_mask = p_caster_mask;
 
 		if (is_omni) {
 			new_key |= OMNI_LIGHT_FLAG;
@@ -2700,6 +2702,7 @@ bool LightStorage::shadow_atlas_update_light(RID p_atlas, RID p_light_instance, 
 			extra_sh->owner = p_light_instance;
 			extra_sh->alloc_tick = tick;
 			extra_sh->version = p_light_version;
+			extra_sh->caster_mask = p_caster_mask;
 		}
 
 		li->shadow_atlases.insert(p_atlas);

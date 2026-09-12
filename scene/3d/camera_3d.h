@@ -81,6 +81,7 @@ private:
 	// String camera_group;
 
 	uint32_t layers = 0xfffff;
+	uint32_t additional_shadow_cull_mask = 0;
 
 	Ref<Environment> environment;
 	Ref<CameraAttributes> attributes;
@@ -176,6 +177,8 @@ public:
 
 	void set_cull_mask(uint32_t p_layers);
 	uint32_t get_cull_mask() const;
+	void set_additional_shadow_cull_mask(uint32_t p_mask);
+	uint32_t get_additional_shadow_cull_mask() const;
 
 	void set_cull_mask_value(int p_layer_number, bool p_enable);
 	bool get_cull_mask_value(int p_layer_number) const;

@@ -56,6 +56,18 @@ TEST_CASE("[SceneTree][Camera3D] Getters and setters") {
 		CHECK_FALSE(test_camera->get_cull_mask_value(set_disable_layer));
 	}
 
+	SUBCASE("Additional shadow cull mask") {
+		CHECK(test_camera->get_additional_shadow_cull_mask() == 0);
+		test_camera->set_cull_mask(1);
+		test_camera->set_additional_shadow_cull_mask(2);
+		CHECK(test_camera->get_cull_mask() == 1);
+		CHECK(test_camera->get_additional_shadow_cull_mask() == 2);
+		test_camera->set_cull_mask(4);
+		CHECK(test_camera->get_additional_shadow_cull_mask() == 2);
+		test_camera->set_additional_shadow_cull_mask(0);
+		CHECK(test_camera->get_cull_mask() == 4);
+	}
+
 	SUBCASE("Attributes") {
 		Ref<CameraAttributes> attributes = memnew(CameraAttributes);
 		test_camera->set_attributes(attributes);
