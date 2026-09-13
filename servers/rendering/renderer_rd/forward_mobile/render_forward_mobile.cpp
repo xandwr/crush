@@ -887,6 +887,10 @@ void RenderForwardMobile::_render_scene(RenderDataRD *p_render_data, const Color
 	bool ce_has_post_opaque = _has_compositor_effect(RSE::COMPOSITOR_EFFECT_CALLBACK_TYPE_POST_OPAQUE, p_render_data);
 	bool ce_has_pre_transparent = _has_compositor_effect(RSE::COMPOSITOR_EFFECT_CALLBACK_TYPE_PRE_TRANSPARENT, p_render_data);
 	bool ce_has_post_transparent = _has_compositor_effect(RSE::COMPOSITOR_EFFECT_CALLBACK_TYPE_POST_TRANSPARENT, p_render_data);
+	bool has_viewmodel_pass = p_render_data->viewmodel_scene_data && p_render_data->viewmodel_instances && p_render_data->viewmodel_instances->size() > 0;
+	if (has_viewmodel_pass) {
+		using_subpass_post_process = false;
+	}
 
 	if (ce_has_post_opaque) {
 		// As we're doing opaque and sky in subpasses we don't support this *yet*
@@ -1372,6 +1376,38 @@ void RenderForwardMobile::_render_scene(RenderDataRD *p_render_data, const Color
 				RD::get_singleton()->draw_command_end_label(); // Render Transparent Pass
 			}
 		}
+	}
+
+	if (has_viewmodel_pass) {
+		RENDER_TIMESTAMP("Render Viewmodel Pass");
+		RD::get_singleton()->draw_command_begin_label("Render Viewmodel Pass");
+
+		RenderSceneDataRD *world_scene_data = p_render_data->scene_data;
+		const PagedArray<RenderGeometryInstance *> *world_instances = p_render_data->instances;
+		p_render_data->scene_data = p_render_data->viewmodel_scene_data;
+		p_render_data->instances = p_render_data->viewmodel_instances;
+		p_render_data->scene_data->directional_light_count = p_render_data->directional_light_count;
+
+		_fill_render_list(RENDER_LIST_OPAQUE, p_render_data, PASS_MODE_COLOR);
+		render_list[RENDER_LIST_OPAQUE].sort_by_key();
+		render_list[RENDER_LIST_ALPHA].sort_by_reverse_depth_and_priority();
+		_setup_environment(p_render_data, false, screen_size, screen_size, p_default_bg_color, false);
+
+		RID viewmodel_framebuffer = FramebufferCacheRD::get_singleton()->get_cache_multiview(rb->get_view_count(), rb->get_internal_texture(), rb->get_viewmodel_depth_texture());
+		RD::FramebufferFormatID viewmodel_framebuffer_format = RD::get_singleton()->framebuffer_get_format(viewmodel_framebuffer);
+		RID viewmodel_uniform_set = _setup_render_pass_uniform_set(RENDER_LIST_OPAQUE, p_render_data, radiance_texture, samplers, true);
+		RenderListParameters viewmodel_opaque_params(render_list[RENDER_LIST_OPAQUE].elements.ptr(), render_list[RENDER_LIST_OPAQUE].element_info.ptr(), render_list[RENDER_LIST_OPAQUE].elements.size(), reverse_cull, PASS_MODE_COLOR, viewmodel_uniform_set, base_specialization, get_debug_draw_mode() == RSE::VIEWPORT_DEBUG_DRAW_WIREFRAME, Vector2(), p_render_data->scene_data->lod_distance_multiplier, p_render_data->scene_data->screen_mesh_lod_threshold, p_render_data->scene_data->view_count);
+		viewmodel_opaque_params.framebuffer_format = viewmodel_framebuffer_format;
+		_render_list_with_draw_list(&viewmodel_opaque_params, viewmodel_framebuffer, RD::DRAW_CLEAR_DEPTH, Vector<Color>(), 0.0f, 0u, p_render_data->render_region);
+
+		viewmodel_uniform_set = _setup_render_pass_uniform_set(RENDER_LIST_ALPHA, p_render_data, radiance_texture, samplers, true);
+		RenderListParameters viewmodel_alpha_params(render_list[RENDER_LIST_ALPHA].elements.ptr(), render_list[RENDER_LIST_ALPHA].element_info.ptr(), render_list[RENDER_LIST_ALPHA].elements.size(), reverse_cull, PASS_MODE_COLOR_TRANSPARENT, viewmodel_uniform_set, base_specialization, get_debug_draw_mode() == RSE::VIEWPORT_DEBUG_DRAW_WIREFRAME, Vector2(), p_render_data->scene_data->lod_distance_multiplier, p_render_data->scene_data->screen_mesh_lod_threshold, p_render_data->scene_data->view_count);
+		viewmodel_alpha_params.framebuffer_format = viewmodel_framebuffer_format;
+		_render_list_with_draw_list(&viewmodel_alpha_params, viewmodel_framebuffer, RD::DRAW_DEFAULT_ALL, Vector<Color>(), 0.0f, 0u, p_render_data->render_region);
+
+		p_render_data->instances = world_instances;
+		p_render_data->scene_data = world_scene_data;
+		RD::get_singleton()->draw_command_end_label();
 	}
 
 	if (rb_data.is_valid() && !using_subpass_post_process) {

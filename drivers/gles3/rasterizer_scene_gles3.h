@@ -122,6 +122,7 @@ struct RenderDataGLES3 {
 	const PagedArray<RenderGeometryInstance *> *instances = nullptr;
 	const PagedArray<RenderGeometryInstance *> *viewmodel_instances = nullptr;
 	const RendererSceneRender::CameraData *viewmodel_camera_data = nullptr;
+	bool viewmodel_rendered = false;
 	const PagedArray<RID> *lights = nullptr;
 	const PagedArray<RID> *reflection_probes = nullptr;
 	RID environment;

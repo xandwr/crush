@@ -53,6 +53,7 @@ public:
 	const PagedArray<RenderGeometryInstance *> *instances = nullptr;
 	const PagedArray<RenderGeometryInstance *> *viewmodel_instances = nullptr;
 	const RendererSceneRender::CameraData *viewmodel_camera_data = nullptr;
+	RenderSceneDataRD *viewmodel_scene_data = nullptr;
 	const PagedArray<RID> *lights = nullptr;
 	const PagedArray<RID> *reflection_probes = nullptr;
 	const PagedArray<RID> *voxel_gi_instances = nullptr;

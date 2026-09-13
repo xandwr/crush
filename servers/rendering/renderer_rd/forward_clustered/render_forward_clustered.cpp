@@ -2458,6 +2458,39 @@ void RenderForwardClustered::_render_scene(RenderDataRD *p_render_data, const Co
 		_process_compositor_effects(RSE::COMPOSITOR_EFFECT_CALLBACK_TYPE_POST_TRANSPARENT, p_render_data);
 	}
 
+	if (p_render_data->viewmodel_scene_data && p_render_data->viewmodel_instances && p_render_data->viewmodel_instances->size() > 0) {
+		RENDER_TIMESTAMP("Render Viewmodel Pass");
+		RD::get_singleton()->draw_command_begin_label("Render Viewmodel Pass");
+
+		RenderSceneDataRD *world_scene_data = p_render_data->scene_data;
+		const PagedArray<RenderGeometryInstance *> *world_instances = p_render_data->instances;
+		p_render_data->scene_data = p_render_data->viewmodel_scene_data;
+		p_render_data->instances = p_render_data->viewmodel_instances;
+		p_render_data->scene_data->directional_light_count = p_render_data->directional_light_count;
+
+		_fill_render_list(RENDER_LIST_OPAQUE, p_render_data, PASS_MODE_COLOR);
+		render_list[RENDER_LIST_OPAQUE].sort_by_key();
+		render_list[RENDER_LIST_ALPHA].sort_by_reverse_depth_and_priority();
+
+		uint32_t viewmodel_uniform_buffer_index = _setup_environment(p_render_data, false, screen_size, screen_size, p_default_bg_color, false);
+		RID viewmodel_framebuffer = FramebufferCacheRD::get_singleton()->get_cache_multiview(rb->get_view_count(), rb->get_internal_texture(), rb->get_viewmodel_depth_texture());
+		RD::FramebufferFormatID viewmodel_framebuffer_format = RD::get_singleton()->framebuffer_get_format(viewmodel_framebuffer);
+
+		RID viewmodel_uniform_set = _setup_render_pass_uniform_set(RENDER_LIST_OPAQUE, p_render_data, radiance_texture, samplers, viewmodel_uniform_buffer_index, true);
+		RenderListParameters viewmodel_opaque_params(render_list[RENDER_LIST_OPAQUE].elements.ptr(), render_list[RENDER_LIST_OPAQUE].element_info.ptr(), render_list[RENDER_LIST_OPAQUE].elements.size(), reverse_cull, PASS_MODE_COLOR, 0, false, p_render_data->directional_light_soft_shadows, viewmodel_uniform_set, get_debug_draw_mode() == RSE::VIEWPORT_DEBUG_DRAW_WIREFRAME, Vector2(), p_render_data->scene_data->lod_distance_multiplier, p_render_data->scene_data->screen_mesh_lod_threshold, p_render_data->scene_data->view_count, 0, base_specialization);
+		viewmodel_opaque_params.framebuffer_format = viewmodel_framebuffer_format;
+		_render_list_with_draw_list(&viewmodel_opaque_params, viewmodel_framebuffer, RD::DRAW_CLEAR_DEPTH, Vector<Color>(), 0.0f, 0u, p_render_data->render_region);
+
+		viewmodel_uniform_set = _setup_render_pass_uniform_set(RENDER_LIST_ALPHA, p_render_data, radiance_texture, samplers, viewmodel_uniform_buffer_index, true);
+		RenderListParameters viewmodel_alpha_params(render_list[RENDER_LIST_ALPHA].elements.ptr(), render_list[RENDER_LIST_ALPHA].element_info.ptr(), render_list[RENDER_LIST_ALPHA].elements.size(), reverse_cull, PASS_MODE_COLOR, COLOR_PASS_FLAG_TRANSPARENT, false, p_render_data->directional_light_soft_shadows, viewmodel_uniform_set, get_debug_draw_mode() == RSE::VIEWPORT_DEBUG_DRAW_WIREFRAME, Vector2(), p_render_data->scene_data->lod_distance_multiplier, p_render_data->scene_data->screen_mesh_lod_threshold, p_render_data->scene_data->view_count, 0, base_specialization);
+		viewmodel_alpha_params.framebuffer_format = viewmodel_framebuffer_format;
+		_render_list_with_draw_list(&viewmodel_alpha_params, viewmodel_framebuffer, RD::DRAW_DEFAULT_ALL, Vector<Color>(), 0.0f, 0u, p_render_data->render_region);
+
+		p_render_data->instances = world_instances;
+		p_render_data->scene_data = world_scene_data;
+		RD::get_singleton()->draw_command_end_label();
+	}
+
 	if (rb_data.is_valid() && (using_upscaling || using_taa)) {
 		if (scale_type == SCALE_FSR2) {
 			rb_data->ensure_fsr2(fsr2_effect);

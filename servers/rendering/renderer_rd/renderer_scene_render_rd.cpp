@@ -1367,6 +1367,7 @@ void RendererSceneRenderRD::render_scene(const Ref<RenderSceneBuffers> &p_render
 
 	// setup scene data
 	RenderSceneDataRD scene_data;
+	RenderSceneDataRD viewmodel_scene_data;
 	{
 		// Our first camera is used by default
 		scene_data.cam_transform = p_camera_data->main_transform;
@@ -1440,6 +1441,38 @@ void RendererSceneRenderRD::render_scene(const Ref<RenderSceneBuffers> &p_render
 		scene_data.time_step = time_step;
 	}
 
+	if (p_viewmodel_camera_data) {
+		viewmodel_scene_data.calculate_motion_vectors = false;
+		viewmodel_scene_data.cam_transform = p_viewmodel_camera_data->main_transform;
+		viewmodel_scene_data.cam_projection = p_viewmodel_camera_data->main_projection;
+		viewmodel_scene_data.camera_visible_layers = p_viewmodel_camera_data->visible_layers;
+		viewmodel_scene_data.cam_orthogonal = p_viewmodel_camera_data->is_orthogonal;
+		viewmodel_scene_data.flip_y = scene_data.flip_y;
+		viewmodel_scene_data.main_cam_transform = p_viewmodel_camera_data->main_transform;
+		viewmodel_scene_data.view_count = p_viewmodel_camera_data->view_count;
+		viewmodel_scene_data.taa_jitter = p_viewmodel_camera_data->taa_jitter;
+		viewmodel_scene_data.taa_frame_count = p_viewmodel_camera_data->taa_frame_count;
+		for (uint32_t v = 0; v < p_viewmodel_camera_data->view_count; v++) {
+			viewmodel_scene_data.view_eye_offset[v] = p_viewmodel_camera_data->view_offset[v].origin;
+			viewmodel_scene_data.view_projection[v] = p_viewmodel_camera_data->view_projection[v];
+			viewmodel_scene_data.prev_view_projection[v] = p_viewmodel_camera_data->view_projection[v];
+		}
+		viewmodel_scene_data.prev_cam_transform = p_viewmodel_camera_data->main_transform;
+		viewmodel_scene_data.prev_cam_projection = p_viewmodel_camera_data->main_projection;
+		viewmodel_scene_data.prev_taa_jitter = p_viewmodel_camera_data->taa_jitter;
+		viewmodel_scene_data.z_near = p_viewmodel_camera_data->main_projection.get_z_near();
+		viewmodel_scene_data.z_far = p_viewmodel_camera_data->main_projection.get_z_far();
+		viewmodel_scene_data.lod_distance_multiplier = p_viewmodel_camera_data->main_projection.get_lod_multiplier() * (1.0 / GLOBAL_GET_CACHED(float, "rendering/scaling_3d/scale"));
+		viewmodel_scene_data.screen_mesh_lod_threshold = scene_data.screen_mesh_lod_threshold;
+		viewmodel_scene_data.shadow_atlas_pixel_size = scene_data.shadow_atlas_pixel_size;
+		viewmodel_scene_data.directional_shadow_pixel_size = scene_data.directional_shadow_pixel_size;
+		viewmodel_scene_data.radiance_pixel_size = scene_data.radiance_pixel_size;
+		viewmodel_scene_data.radiance_border_size = scene_data.radiance_border_size;
+		viewmodel_scene_data.reflection_atlas_border_size = scene_data.reflection_atlas_border_size;
+		viewmodel_scene_data.time = scene_data.time;
+		viewmodel_scene_data.time_step = scene_data.time_step;
+	}
+
 	//assign render data
 	RenderDataRD render_data;
 	{
@@ -1449,6 +1482,7 @@ void RendererSceneRenderRD::render_scene(const Ref<RenderSceneBuffers> &p_render
 		render_data.instances = &p_instances;
 		render_data.viewmodel_instances = &p_viewmodel_instances;
 		render_data.viewmodel_camera_data = p_viewmodel_camera_data;
+		render_data.viewmodel_scene_data = p_viewmodel_camera_data ? &viewmodel_scene_data : nullptr;
 		render_data.lights = &p_lights;
 		render_data.reflection_probes = &p_reflection_probes;
 		render_data.voxel_gi_instances = &p_voxel_gi_instances;

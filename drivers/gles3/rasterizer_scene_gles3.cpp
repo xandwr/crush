@@ -2392,6 +2392,7 @@ void RasterizerSceneGLES3::render_scene(const Ref<RenderSceneBuffers> &p_render_
 
 	bool apply_environment_effects_in_post = false;
 	bool is_reflection_probe = p_reflection_probe.is_valid();
+	bool has_viewmodel_pass = !is_reflection_probe && p_viewmodel_camera_data && p_viewmodel_instances.size() > 0;
 
 	Ref<RenderSceneBuffersGLES3> rb = p_render_buffers;
 	ERR_FAIL_COND(rb.is_null());
@@ -2420,6 +2421,9 @@ void RasterizerSceneGLES3::render_scene(const Ref<RenderSceneBuffers> &p_render_
 		if (glow_enabled || ssao_enabled || use_bcs || canvas_tonemapping) {
 			apply_environment_effects_in_post = true;
 		}
+	}
+	if (has_viewmodel_pass) {
+		apply_environment_effects_in_post = true;
 	}
 
 	// Assign render data
@@ -2919,6 +2923,58 @@ void RasterizerSceneGLES3::render_scene(const Ref<RenderSceneBuffers> &p_render_
 
 	_render_list_template<PASS_MODE_COLOR_TRANSPARENT>(&render_list_params_alpha, &render_data, 0, render_list[RENDER_LIST_ALPHA].elements.size(), true);
 
+	if (has_viewmodel_pass) {
+		RENDER_TIMESTAMP("Render Viewmodel Pass");
+
+		if (rb->get_msaa_needs_resolve()) {
+			glBindFramebuffer(GL_READ_FRAMEBUFFER, rb->get_msaa3d_fbo());
+			glBindFramebuffer(GL_DRAW_FRAMEBUFFER, rb->get_internal_fbo());
+			glBlitFramebuffer(0, 0, screen_size.x, screen_size.y, 0, 0, screen_size.x, screen_size.y, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT, GL_NEAREST);
+		}
+
+		RenderDataGLES3 viewmodel_render_data = render_data;
+		viewmodel_render_data.cam_transform = p_viewmodel_camera_data->main_transform;
+		viewmodel_render_data.inv_cam_transform = viewmodel_render_data.cam_transform.affine_inverse();
+		viewmodel_render_data.cam_projection = p_viewmodel_camera_data->main_projection;
+		viewmodel_render_data.cam_orthogonal = p_viewmodel_camera_data->is_orthogonal;
+		viewmodel_render_data.camera_visible_layers = p_viewmodel_camera_data->visible_layers;
+		viewmodel_render_data.main_cam_transform = p_viewmodel_camera_data->main_transform;
+		viewmodel_render_data.view_count = p_viewmodel_camera_data->view_count;
+		for (uint32_t v = 0; v < p_viewmodel_camera_data->view_count; v++) {
+			viewmodel_render_data.view_eye_offset[v] = p_viewmodel_camera_data->view_offset[v].origin;
+			viewmodel_render_data.view_projection[v] = p_viewmodel_camera_data->view_projection[v];
+		}
+		viewmodel_render_data.z_near = p_viewmodel_camera_data->main_projection.get_z_near();
+		viewmodel_render_data.z_far = p_viewmodel_camera_data->main_projection.get_z_far();
+		viewmodel_render_data.lod_distance_multiplier = p_viewmodel_camera_data->main_projection.get_lod_multiplier();
+		viewmodel_render_data.instances = &p_viewmodel_instances;
+
+		_setup_environment(&viewmodel_render_data, false, screen_size, flip_y, clear_color, false);
+		_fill_render_list(RENDER_LIST_OPAQUE, &viewmodel_render_data, PASS_MODE_COLOR);
+		render_list[RENDER_LIST_OPAQUE].sort_by_key();
+		render_list[RENDER_LIST_ALPHA].sort_by_reverse_depth_and_priority();
+
+		glBindFramebuffer(GL_FRAMEBUFFER, rb->get_viewmodel_fbo());
+		glViewport(0, 0, screen_size.x, screen_size.y);
+		scene_state.enable_gl_depth_test(true);
+		scene_state.enable_gl_depth_draw(true);
+		scene_state.enable_gl_blend(false);
+		scene_state.set_gl_depth_func(GL_GEQUAL);
+		glColorMask(1, 1, 1, 1);
+		RasterizerUtilGLES3::clear_depth(0.0);
+		RasterizerUtilGLES3::clear_stencil(0);
+		glClear(GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+
+		RenderListParameters viewmodel_opaque_params(render_list[RENDER_LIST_OPAQUE].elements.ptr(), render_list[RENDER_LIST_OPAQUE].elements.size(), reverse_cull, spec_constant_base_flags, use_wireframe);
+		_render_list_template<PASS_MODE_COLOR>(&viewmodel_opaque_params, &viewmodel_render_data, 0, render_list[RENDER_LIST_OPAQUE].elements.size());
+
+		scene_state.enable_gl_depth_draw(false);
+		scene_state.enable_gl_blend(true);
+		RenderListParameters viewmodel_alpha_params(render_list[RENDER_LIST_ALPHA].elements.ptr(), render_list[RENDER_LIST_ALPHA].elements.size(), reverse_cull, spec_constant_base_flags, use_wireframe);
+		_render_list_template<PASS_MODE_COLOR_TRANSPARENT>(&viewmodel_alpha_params, &viewmodel_render_data, 0, render_list[RENDER_LIST_ALPHA].elements.size(), true);
+		render_data.viewmodel_rendered = true;
+	}
+
 	scene_state.enable_gl_stencil_test(false);
 
 	if (!flip_y) {
@@ -3029,7 +3085,7 @@ void RasterizerSceneGLES3::_render_post_processing(const RenderDataGLES3 *p_rend
 
 	if (view_count == 1) {
 		// Resolve if needed.
-		if (fbo_msaa_3d != 0 && msaa3d_needs_resolve) {
+		if (fbo_msaa_3d != 0 && msaa3d_needs_resolve && !p_render_data->viewmodel_rendered) {
 			// We can use blit to copy things over
 			glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo_msaa_3d);
 
