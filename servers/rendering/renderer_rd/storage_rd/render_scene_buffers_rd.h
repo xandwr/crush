@@ -54,6 +54,7 @@
 #define RB_TEX_DEPTH_MSAA SNAME("depth_msaa")
 #define RB_TEX_DEPTH_SUBSAMPLED SNAME("depth_subsampled")
 #define RB_TEX_DEPTH_MSAA_SUBSAMPLED SNAME("depth_msaa_subsampled")
+#define RB_TEX_VIEWMODEL_DEPTH SNAME("viewmodel_depth")
 #define RB_TEX_VELOCITY SNAME("velocity")
 #define RB_TEX_VELOCITY_MSAA SNAME("velocity_msaa")
 
@@ -278,6 +279,7 @@ public:
 	bool has_depth_texture();
 	RID get_depth_texture();
 	RID get_depth_texture(const uint32_t p_layer);
+	RID get_viewmodel_depth_texture();
 
 	RID get_depth_msaa() const {
 		return get_texture(RB_SCOPE_BUFFERS, RB_TEX_DEPTH_MSAA);

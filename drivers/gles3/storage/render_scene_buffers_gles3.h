@@ -79,6 +79,7 @@ public:
 	} msaa3d; // MSAA buffers used to render 3D
 
 	FBDEF internal3d; // buffers used to either render 3D (scaled/post) or to resolve MSAA into
+	FBDEF viewmodel3d;
 
 	FBDEF backbuffer3d; // our back buffer
 
@@ -91,6 +92,7 @@ private:
 	void _check_render_buffers();
 	void _clear_msaa3d_buffers();
 	void _clear_intermediate_buffers();
+	void _clear_viewmodel_buffers();
 	void _clear_back_buffers();
 	void _clear_glow_buffers();
 
@@ -144,6 +146,7 @@ public:
 		_check_render_buffers();
 		return internal3d.depth;
 	}
+	GLuint get_viewmodel_fbo();
 	GLuint get_backbuffer_fbo() const { return backbuffer3d.fbo; }
 	GLuint get_backbuffer() const { return backbuffer3d.color; }
 	GLuint get_backbuffer_depth() const { return backbuffer3d.depth; }
