@@ -32,6 +32,7 @@
 
 #include "core/object/class_db.h"
 #include "scene/3d/camera_3d.h"
+#include "servers/rendering/rendering_server.h"
 
 void Viewmodel3D::_update_camera() {
 	camera_id = ObjectID();
@@ -41,6 +42,14 @@ void Viewmodel3D::_update_camera() {
 			camera_id = camera->get_instance_id();
 			break;
 		}
+	}
+	_update_camera_projection();
+}
+
+void Viewmodel3D::_update_camera_projection() {
+	Camera3D *camera = get_camera_3d();
+	if (camera) {
+		RenderingServer::get_singleton()->camera_set_viewmodel_projection(camera->get_camera(), fov, _near, _far);
 	}
 }
 
@@ -93,6 +102,7 @@ bool Viewmodel3D::is_enabled() const {
 void Viewmodel3D::set_fov(real_t p_fov) {
 	ERR_FAIL_COND(p_fov < 1.0 || p_fov > 179.0);
 	fov = p_fov;
+	_update_camera_projection();
 }
 
 real_t Viewmodel3D::get_fov() const {
@@ -102,6 +112,7 @@ real_t Viewmodel3D::get_fov() const {
 void Viewmodel3D::set_near(real_t p_near) {
 	ERR_FAIL_COND(p_near <= 0.0);
 	_near = p_near;
+	_update_camera_projection();
 }
 
 real_t Viewmodel3D::get_near() const {
@@ -111,6 +122,7 @@ real_t Viewmodel3D::get_near() const {
 void Viewmodel3D::set_far(real_t p_far) {
 	ERR_FAIL_COND(p_far <= 0.0);
 	_far = p_far;
+	_update_camera_projection();
 }
 
 real_t Viewmodel3D::get_far() const {

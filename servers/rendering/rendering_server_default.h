@@ -714,6 +714,7 @@ public:
 	FUNC2(camera_set_transform, RID, const Transform3D &)
 	FUNC2(camera_set_cull_mask, RID, uint32_t)
 	FUNC2(camera_set_additional_shadow_cull_mask, RID, uint32_t)
+	FUNC4(camera_set_viewmodel_projection, RID, float, float, float)
 	FUNC2(camera_set_environment, RID, RID)
 	FUNC2(camera_set_camera_attributes, RID, RID)
 	FUNC2(camera_set_compositor, RID, RID)

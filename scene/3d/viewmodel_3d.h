@@ -45,6 +45,7 @@ class Viewmodel3D : public Node3D {
 	bool cast_world_shadows = false;
 
 	void _update_camera();
+	void _update_camera_projection();
 
 protected:
 	void _notification(int p_what);

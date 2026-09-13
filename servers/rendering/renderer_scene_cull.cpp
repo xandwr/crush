@@ -135,6 +135,14 @@ void RendererSceneCull::camera_set_additional_shadow_cull_mask(RID p_camera, uin
 	camera->additional_shadow_cull_mask = p_layers;
 }
 
+void RendererSceneCull::camera_set_viewmodel_projection(RID p_camera, float p_fovy_degrees, float p_z_near, float p_z_far) {
+	Camera *camera = camera_owner.get_or_null(p_camera);
+	ERR_FAIL_NULL(camera);
+	camera->viewmodel_fov = p_fovy_degrees;
+	camera->viewmodel_znear = p_z_near;
+	camera->viewmodel_zfar = p_z_far;
+}
+
 void RendererSceneCull::camera_set_environment(RID p_camera, RID p_env) {
 	Camera *camera = camera_owner.get_or_null(p_camera);
 	ERR_FAIL_NULL(camera);
@@ -2714,6 +2722,7 @@ void RendererSceneCull::render_camera(const Ref<RenderSceneBuffers> &p_render_bu
 	}
 
 	RendererSceneRender::CameraData camera_data;
+	Projection viewmodel_projection;
 
 	// Setup Camera(s)
 	if (p_xr_interface.is_null()) {
@@ -2754,6 +2763,7 @@ void RendererSceneCull::render_camera(const Ref<RenderSceneBuffers> &p_render_bu
 		}
 
 		camera_data.set_camera(transform, projection, is_orthogonal, vaspect, jitter, taa_frame_count, camera->visible_layers);
+		viewmodel_projection.set_perspective(camera->viewmodel_fov, p_viewport_size.width / (float)p_viewport_size.height, camera->viewmodel_znear, camera->viewmodel_zfar, camera->vaspect);
 #ifndef XR_DISABLED
 	} else {
 		XRServer *xr_server = XRServer::get_singleton();
@@ -2802,7 +2812,7 @@ void RendererSceneCull::render_camera(const Ref<RenderSceneBuffers> &p_render_bu
 	// For now just cull on the first camera
 	RendererSceneOcclusionCull::get_singleton()->buffer_update(p_viewport, camera_data.main_transform, camera_data.main_projection, camera_data.is_orthogonal);
 
-	_render_scene(&camera_data, p_render_buffers, environment, camera->attributes, compositor, camera->visible_layers, p_scenario, p_viewport, p_shadow_atlas, RID(), -1, p_screen_mesh_lod_threshold, p_window_output_max_value, true, r_render_info, camera->additional_shadow_cull_mask);
+	_render_scene(&camera_data, p_render_buffers, environment, camera->attributes, compositor, camera->visible_layers, p_scenario, p_viewport, p_shadow_atlas, RID(), -1, p_screen_mesh_lod_threshold, p_window_output_max_value, true, r_render_info, camera->additional_shadow_cull_mask, p_camera, p_xr_interface.is_null() ? &viewmodel_projection : nullptr);
 #endif
 }
 
@@ -2937,20 +2947,23 @@ void RendererSceneCull::_scene_cull(CullData &cull_data, InstanceCullResult &cul
 		bool mesh_visible = false;
 
 		InstanceData &idata = cull_data.scenario->instance_data[i];
+		uint32_t base_type = idata.flags & InstanceData::FLAG_BASE_TYPE_MASK;
+		bool is_geometry = (1 << base_type) & RSE::INSTANCE_GEOMETRY_MASK;
+		bool is_viewmodel_geometry = is_geometry && idata.viewmodel_camera == cull_data.camera && cull_data.viewmodel_camera_matrix;
 		uint32_t visibility_flags = idata.flags & (InstanceData::FLAG_VISIBILITY_DEPENDENCY_HIDDEN_CLOSE_RANGE | InstanceData::FLAG_VISIBILITY_DEPENDENCY_HIDDEN | InstanceData::FLAG_VISIBILITY_DEPENDENCY_FADE_CHILDREN);
 		int32_t visibility_check = -1;
 
 #define HIDDEN_BY_VISIBILITY_CHECKS (visibility_flags == InstanceData::FLAG_VISIBILITY_DEPENDENCY_HIDDEN_CLOSE_RANGE || visibility_flags == InstanceData::FLAG_VISIBILITY_DEPENDENCY_HIDDEN)
 #define LAYER_CHECK (cull_data.visible_layers & idata.layer_mask)
 #define IN_FRUSTUM(f) (cull_data.scenario->instance_aabbs[i].in_frustum(f))
+#define IN_VIEWMODEL_FRUSTUM (cull_data.scenario->instance_aabbs[i].in_frustum(cull_data.cull->viewmodel_frustum))
 #define VIS_RANGE_CHECK ((idata.visibility_index == -1) || _visibility_range_check<false>(cull_data.scenario->instance_visibility[idata.visibility_index], cull_data.cam_transform.origin, cull_data.visibility_viewport_mask) == 0)
 #define VIS_PARENT_CHECK (_visibility_parent_check(cull_data, idata))
 #define VIS_CHECK (visibility_check < 0 ? (visibility_check = (visibility_flags != InstanceData::FLAG_VISIBILITY_DEPENDENCY_NEEDS_CHECK || (VIS_RANGE_CHECK && VIS_PARENT_CHECK))) : visibility_check)
 #define OCCLUSION_CULLED (cull_data.occlusion_buffer != nullptr && (cull_data.scenario->instance_data[i].flags & InstanceData::FLAG_IGNORE_OCCLUSION_CULLING) == 0 && cull_data.occlusion_buffer->is_occluded(cull_data.scenario->instance_aabbs[i].bounds, cull_data.cam_transform.origin, inv_cam_transform, *cull_data.camera_matrix, z_near, is_orthogonal, cull_data.scenario->instance_data[i].occlusion_timeout))
 
 		if (!HIDDEN_BY_VISIBILITY_CHECKS) {
-			if ((LAYER_CHECK && IN_FRUSTUM(cull_data.cull->frustum) && VIS_CHECK && !OCCLUSION_CULLED) || (cull_data.scenario->instance_data[i].flags & InstanceData::FLAG_IGNORE_ALL_CULLING)) {
-				uint32_t base_type = idata.flags & InstanceData::FLAG_BASE_TYPE_MASK;
+			if ((LAYER_CHECK && VIS_CHECK && ((is_viewmodel_geometry && IN_VIEWMODEL_FRUSTUM) || (!is_viewmodel_geometry && IN_FRUSTUM(cull_data.cull->frustum) && !OCCLUSION_CULLED))) || (cull_data.scenario->instance_data[i].flags & InstanceData::FLAG_IGNORE_ALL_CULLING)) {
 				if (base_type == RSE::INSTANCE_LIGHT) {
 					cull_result.lights.push_back(idata.instance);
 					cull_result.light_instances.push_back(RID::from_uint64(idata.instance_data_rid));
@@ -3254,7 +3267,11 @@ void RendererSceneCull::_scene_cull(CullData &cull_data, InstanceCullResult &cul
 					}
 
 					if (keep) {
-						cull_result.geometry_instances.push_back(idata.instance_geometry);
+						if (is_viewmodel_geometry) {
+							cull_result.viewmodel_geometry_instances.push_back(idata.instance_geometry);
+						} else {
+							cull_result.geometry_instances.push_back(idata.instance_geometry);
+						}
 					}
 				}
 			}
@@ -3279,6 +3296,7 @@ void RendererSceneCull::_scene_cull(CullData &cull_data, InstanceCullResult &cul
 #undef HIDDEN_BY_VISIBILITY_CHECKS
 #undef LAYER_CHECK
 #undef IN_FRUSTUM
+#undef IN_VIEWMODEL_FRUSTUM
 #undef VIS_RANGE_CHECK
 #undef VIS_PARENT_CHECK
 #undef VIS_CHECK
@@ -3316,7 +3334,7 @@ void RendererSceneCull::_scene_particles_set_view_axis(RID p_particles, const Ve
 	RSG::particles_storage->particles_set_view_axis(p_particles, p_axis, p_up_axis);
 }
 
-void RendererSceneCull::_render_scene(const RendererSceneRender::CameraData *p_camera_data, const Ref<RenderSceneBuffers> &p_render_buffers, RID p_environment, RID p_force_camera_attributes, RID p_compositor, uint32_t p_visible_layers, RID p_scenario, RID p_viewport, RID p_shadow_atlas, RID p_reflection_probe, int p_reflection_probe_pass, float p_screen_mesh_lod_threshold, float p_window_output_max_value, bool p_using_shadows, RenderingServerTypes::RenderInfo *r_render_info, uint32_t p_additional_shadow_cull_mask) {
+void RendererSceneCull::_render_scene(const RendererSceneRender::CameraData *p_camera_data, const Ref<RenderSceneBuffers> &p_render_buffers, RID p_environment, RID p_force_camera_attributes, RID p_compositor, uint32_t p_visible_layers, RID p_scenario, RID p_viewport, RID p_shadow_atlas, RID p_reflection_probe, int p_reflection_probe_pass, float p_screen_mesh_lod_threshold, float p_window_output_max_value, bool p_using_shadows, RenderingServerTypes::RenderInfo *r_render_info, uint32_t p_additional_shadow_cull_mask, RID p_camera, const Projection *p_viewmodel_projection) {
 	Instance *render_reflection_probe = instance_owner.get_or_null(p_reflection_probe); //if null, not rendering to it
 
 	// Prepare the light - camera volume culling system.
@@ -3373,6 +3391,9 @@ void RendererSceneCull::_render_scene(const RendererSceneRender::CameraData *p_c
 
 	Vector<Plane> planes = p_camera_data->main_projection.get_projection_planes(p_camera_data->main_transform);
 	cull.frustum = Frustum(planes);
+	if (p_viewmodel_projection) {
+		cull.viewmodel_frustum = Frustum(p_viewmodel_projection->get_projection_planes(p_camera_data->main_transform));
+	}
 
 	Vector<RID> directional_lights;
 	// directional lights
@@ -3448,11 +3469,13 @@ void RendererSceneCull::_render_scene(const RendererSceneRender::CameraData *p_c
 		cull_data.scenario = scenario;
 		cull_data.shadow_atlas = p_shadow_atlas;
 		cull_data.cam_transform = p_camera_data->main_transform;
+		cull_data.camera = p_camera;
 		cull_data.visible_layers = p_visible_layers;
 		cull_data.additional_shadow_cull_mask = p_additional_shadow_cull_mask;
 		cull_data.render_reflection_probe = render_reflection_probe;
 		cull_data.occlusion_buffer = RendererSceneOcclusionCull::get_singleton()->buffer_get_ptr(p_viewport);
 		cull_data.camera_matrix = &p_camera_data->main_projection;
+		cull_data.viewmodel_camera_matrix = p_viewmodel_projection;
 		cull_data.visibility_viewport_mask = scenario->viewport_visibility_masks.has(p_viewport) ? scenario->viewport_visibility_masks[p_viewport] : 0;
 #ifdef DEBUG_CULL_TIME
 		uint64_t time_from = OS::get_singleton()->get_ticks_usec();
