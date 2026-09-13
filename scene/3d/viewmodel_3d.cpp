@@ -33,10 +33,27 @@
 #include "core/object/class_db.h"
 #include "scene/3d/camera_3d.h"
 
+void Viewmodel3D::_update_camera() {
+	camera_id = ObjectID();
+	for (Node *ancestor = get_parent(); ancestor; ancestor = ancestor->get_parent()) {
+		Camera3D *camera = Object::cast_to<Camera3D>(ancestor);
+		if (camera) {
+			camera_id = camera->get_instance_id();
+			break;
+		}
+	}
+}
+
 void Viewmodel3D::_notification(int p_what) {
 	switch (p_what) {
+		case NOTIFICATION_ENTER_TREE:
 		case NOTIFICATION_PARENTED:
+			_update_camera();
+			update_configuration_warnings();
+			break;
+		case NOTIFICATION_EXIT_TREE:
 		case NOTIFICATION_UNPARENTED:
+			camera_id = ObjectID();
 			update_configuration_warnings();
 			break;
 	}
@@ -59,6 +76,10 @@ void Viewmodel3D::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "near", PROPERTY_HINT_RANGE, "0.001,10,0.001,or_greater,exp,suffix:m"), "set_near", "get_near");
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "far", PROPERTY_HINT_RANGE, "0.01,4000,0.01,or_greater,exp,suffix:m"), "set_far", "get_far");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "cast_world_shadows"), "set_cast_world_shadows", "is_casting_world_shadows");
+}
+
+Camera3D *Viewmodel3D::get_camera_3d() const {
+	return ObjectDB::get_instance<Camera3D>(camera_id);
 }
 
 void Viewmodel3D::set_enabled(bool p_enabled) {

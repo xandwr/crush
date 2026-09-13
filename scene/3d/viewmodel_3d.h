@@ -32,20 +32,27 @@
 
 #include "scene/3d/node_3d.h"
 
+class Camera3D;
+
 class Viewmodel3D : public Node3D {
 	GDCLASS(Viewmodel3D, Node3D);
 
+	ObjectID camera_id;
 	bool enabled = true;
 	real_t fov = 54.0;
 	real_t _near = 0.01;
 	real_t _far = 100.0;
 	bool cast_world_shadows = false;
 
+	void _update_camera();
+
 protected:
 	void _notification(int p_what);
 	static void _bind_methods();
 
 public:
+	Camera3D *get_camera_3d() const;
+
 	void set_enabled(bool p_enabled);
 	bool is_enabled() const;
 

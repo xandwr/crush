@@ -37,6 +37,8 @@ TEST_FORCE_LINK(test_viewmodel_3d)
 #include "core/object/class_db.h"
 #include "scene/3d/camera_3d.h"
 #include "scene/3d/viewmodel_3d.h"
+#include "scene/main/scene_tree.h"
+#include "scene/main/window.h"
 
 namespace TestViewmodel3D {
 
@@ -93,6 +95,48 @@ TEST_CASE("[SceneTree][Viewmodel3D] Camera ancestry warnings") {
 		CHECK(inner->get_configuration_warnings().size() == 1);
 		memdelete(camera);
 	}
+}
+
+TEST_CASE("[SceneTree][Viewmodel3D] Camera ownership") {
+	Window *root = SceneTree::get_singleton()->get_root();
+	Camera3D *first_camera = memnew(Camera3D);
+	Camera3D *second_camera = memnew(Camera3D);
+	Node3D *subtree = memnew(Node3D);
+	Node3D *intermediate = memnew(Node3D);
+	Viewmodel3D *viewmodel = memnew(Viewmodel3D);
+
+	intermediate->add_child(viewmodel);
+	subtree->add_child(intermediate);
+	CHECK(viewmodel->get_camera_3d() == nullptr);
+
+	root->add_child(first_camera);
+	root->add_child(second_camera);
+	first_camera->add_child(subtree);
+	CHECK(viewmodel->get_camera_3d() == first_camera);
+
+	subtree->reparent(second_camera);
+	CHECK(viewmodel->get_camera_3d() == second_camera);
+
+	second_camera->remove_child(subtree);
+	CHECK(viewmodel->get_camera_3d() == nullptr);
+
+	memdelete(subtree);
+	memdelete(first_camera);
+	memdelete(second_camera);
+}
+
+TEST_CASE("[SceneTree][Viewmodel3D] Nearest camera owns viewmodel") {
+	Window *root = SceneTree::get_singleton()->get_root();
+	Camera3D *outer_camera = memnew(Camera3D);
+	Camera3D *inner_camera = memnew(Camera3D);
+	Viewmodel3D *viewmodel = memnew(Viewmodel3D);
+
+	inner_camera->add_child(viewmodel);
+	outer_camera->add_child(inner_camera);
+	root->add_child(outer_camera);
+	CHECK(viewmodel->get_camera_3d() == inner_camera);
+
+	memdelete(outer_camera);
 }
 
 } // namespace TestViewmodel3D
