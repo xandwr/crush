@@ -530,6 +530,8 @@ public:
 	virtual void camera_set_viewmodel_projection(RID p_camera, float p_fovy_degrees, float p_z_near, float p_z_far) = 0;
 	virtual void camera_set_viewmodel_enabled(RID p_camera, bool p_enabled) = 0;
 	virtual bool camera_is_viewmodel_enabled(RID p_camera) const = 0;
+	virtual void camera_set_viewmodel_cast_world_shadows(RID p_camera, bool p_enabled) = 0;
+	virtual bool camera_is_viewmodel_casting_world_shadows(RID p_camera) const = 0;
 	virtual void camera_set_environment(RID p_camera, RID p_env) = 0;
 	virtual void camera_set_camera_attributes(RID p_camera, RID p_camera_attributes) = 0;
 	virtual void camera_set_compositor(RID p_camera, RID p_compositor) = 0;

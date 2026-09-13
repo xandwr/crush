@@ -45,6 +45,7 @@ void Viewmodel3D::_update_camera() {
 	}
 	_update_camera_projection();
 	_update_camera_enabled();
+	_update_camera_shadow_casting();
 }
 
 void Viewmodel3D::_update_camera_projection() {
@@ -58,6 +59,13 @@ void Viewmodel3D::_update_camera_enabled() {
 	Camera3D *camera = get_camera_3d();
 	if (camera) {
 		RenderingServer::get_singleton()->camera_set_viewmodel_enabled(camera->get_camera(), enabled);
+	}
+}
+
+void Viewmodel3D::_update_camera_shadow_casting() {
+	Camera3D *camera = get_camera_3d();
+	if (camera) {
+		RenderingServer::get_singleton()->camera_set_viewmodel_cast_world_shadows(camera->get_camera(), cast_world_shadows);
 	}
 }
 
@@ -140,6 +148,7 @@ real_t Viewmodel3D::get_far() const {
 
 void Viewmodel3D::set_cast_world_shadows(bool p_enabled) {
 	cast_world_shadows = p_enabled;
+	_update_camera_shadow_casting();
 }
 
 bool Viewmodel3D::is_casting_world_shadows() const {

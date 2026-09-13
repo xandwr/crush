@@ -717,6 +717,8 @@ public:
 	FUNC4(camera_set_viewmodel_projection, RID, float, float, float)
 	FUNC2(camera_set_viewmodel_enabled, RID, bool)
 	FUNC1RC(bool, camera_is_viewmodel_enabled, RID)
+	FUNC2(camera_set_viewmodel_cast_world_shadows, RID, bool)
+	FUNC1RC(bool, camera_is_viewmodel_casting_world_shadows, RID)
 	FUNC2(camera_set_environment, RID, RID)
 	FUNC2(camera_set_camera_attributes, RID, RID)
 	FUNC2(camera_set_compositor, RID, RID)

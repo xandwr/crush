@@ -155,6 +155,18 @@ bool RendererSceneCull::camera_is_viewmodel_enabled(RID p_camera) const {
 	return camera->viewmodel_enabled;
 }
 
+void RendererSceneCull::camera_set_viewmodel_cast_world_shadows(RID p_camera, bool p_enabled) {
+	Camera *camera = camera_owner.get_or_null(p_camera);
+	ERR_FAIL_NULL(camera);
+	camera->viewmodel_cast_world_shadows = p_enabled;
+}
+
+bool RendererSceneCull::camera_is_viewmodel_casting_world_shadows(RID p_camera) const {
+	const Camera *camera = camera_owner.get_or_null(p_camera);
+	ERR_FAIL_NULL_V(camera, false);
+	return camera->viewmodel_cast_world_shadows;
+}
+
 void RendererSceneCull::camera_set_environment(RID p_camera, RID p_env) {
 	Camera *camera = camera_owner.get_or_null(p_camera);
 	ERR_FAIL_NULL(camera);
@@ -2406,7 +2418,7 @@ void RendererSceneCull::_light_instance_setup_directional_shadow(int p_shadow_in
 	}
 }
 
-bool RendererSceneCull::_light_instance_update_shadow(Instance *p_instance, const Transform3D p_cam_transform, const Projection &p_cam_projection, bool p_cam_orthogonal, bool p_cam_vaspect, RID p_shadow_atlas, Scenario *p_scenario, float p_screen_mesh_lod_threshold, uint32_t p_visible_layers) {
+bool RendererSceneCull::_light_instance_update_shadow(Instance *p_instance, const Transform3D p_cam_transform, const Projection &p_cam_projection, bool p_cam_orthogonal, bool p_cam_vaspect, RID p_shadow_atlas, Scenario *p_scenario, float p_screen_mesh_lod_threshold, uint32_t p_visible_layers, RID p_camera, bool p_exclude_viewmodel_shadows) {
 	InstanceLightData *light = static_cast<InstanceLightData *>(p_instance->base_data);
 
 	Transform3D light_transform = p_instance->transform;
@@ -2466,7 +2478,7 @@ bool RendererSceneCull::_light_instance_update_shadow(Instance *p_instance, cons
 
 					for (int j = 0; j < (int)instance_shadow_cull_result.size(); j++) {
 						Instance *instance = instance_shadow_cull_result[j];
-						if (!instance->visible || !((1 << instance->base_type) & RSE::INSTANCE_GEOMETRY_MASK) || !static_cast<InstanceGeometryData *>(instance->base_data)->can_cast_shadows || !(p_visible_layers & instance->layer_mask & RSG::light_storage->light_get_shadow_caster_mask(p_instance->base))) {
+						if (!instance->visible || !((1 << instance->base_type) & RSE::INSTANCE_GEOMETRY_MASK) || !static_cast<InstanceGeometryData *>(instance->base_data)->can_cast_shadows || !(p_visible_layers & instance->layer_mask & RSG::light_storage->light_get_shadow_caster_mask(p_instance->base)) || (p_exclude_viewmodel_shadows && instance->viewmodel_camera == p_camera)) {
 							continue;
 						} else {
 							if (static_cast<InstanceGeometryData *>(instance->base_data)->material_is_animated) {
@@ -2549,7 +2561,7 @@ bool RendererSceneCull::_light_instance_update_shadow(Instance *p_instance, cons
 
 					for (int j = 0; j < (int)instance_shadow_cull_result.size(); j++) {
 						Instance *instance = instance_shadow_cull_result[j];
-						if (!instance->visible || !((1 << instance->base_type) & RSE::INSTANCE_GEOMETRY_MASK) || !static_cast<InstanceGeometryData *>(instance->base_data)->can_cast_shadows || !(p_visible_layers & instance->layer_mask & RSG::light_storage->light_get_shadow_caster_mask(p_instance->base))) {
+						if (!instance->visible || !((1 << instance->base_type) & RSE::INSTANCE_GEOMETRY_MASK) || !static_cast<InstanceGeometryData *>(instance->base_data)->can_cast_shadows || !(p_visible_layers & instance->layer_mask & RSG::light_storage->light_get_shadow_caster_mask(p_instance->base)) || (p_exclude_viewmodel_shadows && instance->viewmodel_camera == p_camera)) {
 							continue;
 						} else {
 							if (static_cast<InstanceGeometryData *>(instance->base_data)->material_is_animated) {
@@ -2617,7 +2629,7 @@ bool RendererSceneCull::_light_instance_update_shadow(Instance *p_instance, cons
 
 			for (int j = 0; j < (int)instance_shadow_cull_result.size(); j++) {
 				Instance *instance = instance_shadow_cull_result[j];
-				if (!instance->visible || !((1 << instance->base_type) & RSE::INSTANCE_GEOMETRY_MASK) || !static_cast<InstanceGeometryData *>(instance->base_data)->can_cast_shadows || !(p_visible_layers & instance->layer_mask & RSG::light_storage->light_get_shadow_caster_mask(p_instance->base))) {
+				if (!instance->visible || !((1 << instance->base_type) & RSE::INSTANCE_GEOMETRY_MASK) || !static_cast<InstanceGeometryData *>(instance->base_data)->can_cast_shadows || !(p_visible_layers & instance->layer_mask & RSG::light_storage->light_get_shadow_caster_mask(p_instance->base)) || (p_exclude_viewmodel_shadows && instance->viewmodel_camera == p_camera)) {
 					continue;
 				} else {
 					if (static_cast<InstanceGeometryData *>(instance->base_data)->material_is_animated) {
@@ -2683,7 +2695,7 @@ bool RendererSceneCull::_light_instance_update_shadow(Instance *p_instance, cons
 
 			for (int j = 0; j < (int)instance_shadow_cull_result.size(); j++) {
 				Instance *instance = instance_shadow_cull_result[j];
-				if (!instance->visible || !((1 << instance->base_type) & RSE::INSTANCE_GEOMETRY_MASK) || !static_cast<InstanceGeometryData *>(instance->base_data)->can_cast_shadows || !(p_visible_layers & instance->layer_mask & RSG::light_storage->light_get_shadow_caster_mask(p_instance->base))) {
+				if (!instance->visible || !((1 << instance->base_type) & RSE::INSTANCE_GEOMETRY_MASK) || !static_cast<InstanceGeometryData *>(instance->base_data)->can_cast_shadows || !(p_visible_layers & instance->layer_mask & RSG::light_storage->light_get_shadow_caster_mask(p_instance->base)) || (p_exclude_viewmodel_shadows && instance->viewmodel_camera == p_camera)) {
 					continue;
 				} else {
 					if (static_cast<InstanceGeometryData *>(instance->base_data)->material_is_animated) {
@@ -2824,7 +2836,7 @@ void RendererSceneCull::render_camera(const Ref<RenderSceneBuffers> &p_render_bu
 	// For now just cull on the first camera
 	RendererSceneOcclusionCull::get_singleton()->buffer_update(p_viewport, camera_data.main_transform, camera_data.main_projection, camera_data.is_orthogonal);
 
-	_render_scene(&camera_data, p_render_buffers, environment, camera->attributes, compositor, camera->visible_layers, p_scenario, p_viewport, p_shadow_atlas, RID(), -1, p_screen_mesh_lod_threshold, p_window_output_max_value, true, r_render_info, camera->additional_shadow_cull_mask, p_camera, p_xr_interface.is_null() && camera->viewmodel_enabled ? &viewmodel_projection : nullptr);
+	_render_scene(&camera_data, p_render_buffers, environment, camera->attributes, compositor, camera->visible_layers, p_scenario, p_viewport, p_shadow_atlas, RID(), -1, p_screen_mesh_lod_threshold, p_window_output_max_value, true, r_render_info, camera->additional_shadow_cull_mask, p_camera, p_xr_interface.is_null() && camera->viewmodel_enabled ? &viewmodel_projection : nullptr, camera->viewmodel_cast_world_shadows);
 #endif
 }
 
@@ -3296,7 +3308,7 @@ void RendererSceneCull::_scene_cull(CullData &cull_data, InstanceCullResult &cul
 					if (IN_FRUSTUM(cull_data.cull->shadows[j].cascades[k].frustum) && VIS_CHECK) {
 						uint32_t base_type = idata.flags & InstanceData::FLAG_BASE_TYPE_MASK;
 
-						if (((1 << base_type) & RSE::INSTANCE_GEOMETRY_MASK) && idata.flags & InstanceData::FLAG_CAST_SHADOWS && ((cull_data.visible_layers | cull_data.additional_shadow_cull_mask) & idata.layer_mask & cull_data.cull->shadows[j].caster_mask)) {
+						if (((1 << base_type) & RSE::INSTANCE_GEOMETRY_MASK) && idata.flags & InstanceData::FLAG_CAST_SHADOWS && ((cull_data.visible_layers | cull_data.additional_shadow_cull_mask) & idata.layer_mask & cull_data.cull->shadows[j].caster_mask) && !(cull_data.exclude_viewmodel_shadows && idata.viewmodel_camera == cull_data.camera)) {
 							cull_result.directional_shadows[j].cascade_geometry_instances[k].push_back(idata.instance_geometry);
 							mesh_visible = true;
 						}
@@ -3346,7 +3358,7 @@ void RendererSceneCull::_scene_particles_set_view_axis(RID p_particles, const Ve
 	RSG::particles_storage->particles_set_view_axis(p_particles, p_axis, p_up_axis);
 }
 
-void RendererSceneCull::_render_scene(const RendererSceneRender::CameraData *p_camera_data, const Ref<RenderSceneBuffers> &p_render_buffers, RID p_environment, RID p_force_camera_attributes, RID p_compositor, uint32_t p_visible_layers, RID p_scenario, RID p_viewport, RID p_shadow_atlas, RID p_reflection_probe, int p_reflection_probe_pass, float p_screen_mesh_lod_threshold, float p_window_output_max_value, bool p_using_shadows, RenderingServerTypes::RenderInfo *r_render_info, uint32_t p_additional_shadow_cull_mask, RID p_camera, const Projection *p_viewmodel_projection) {
+void RendererSceneCull::_render_scene(const RendererSceneRender::CameraData *p_camera_data, const Ref<RenderSceneBuffers> &p_render_buffers, RID p_environment, RID p_force_camera_attributes, RID p_compositor, uint32_t p_visible_layers, RID p_scenario, RID p_viewport, RID p_shadow_atlas, RID p_reflection_probe, int p_reflection_probe_pass, float p_screen_mesh_lod_threshold, float p_window_output_max_value, bool p_using_shadows, RenderingServerTypes::RenderInfo *r_render_info, uint32_t p_additional_shadow_cull_mask, RID p_camera, const Projection *p_viewmodel_projection, bool p_viewmodel_cast_world_shadows) {
 	Instance *render_reflection_probe = instance_owner.get_or_null(p_reflection_probe); //if null, not rendering to it
 
 	// Prepare the light - camera volume culling system.
@@ -3482,6 +3494,7 @@ void RendererSceneCull::_render_scene(const RendererSceneRender::CameraData *p_c
 		cull_data.shadow_atlas = p_shadow_atlas;
 		cull_data.cam_transform = p_camera_data->main_transform;
 		cull_data.camera = p_camera;
+		cull_data.exclude_viewmodel_shadows = p_viewmodel_projection && !p_viewmodel_cast_world_shadows;
 		cull_data.visible_layers = p_visible_layers;
 		cull_data.additional_shadow_cull_mask = p_additional_shadow_cull_mask;
 		cull_data.render_reflection_probe = render_reflection_probe;
@@ -3694,7 +3707,7 @@ void RendererSceneCull::_render_scene(const RendererSceneRender::CameraData *p_c
 					continue;
 				}
 				RENDER_TIMESTAMP("> Render Light3D " + itos(i));
-				if (_light_instance_update_shadow(ins, p_camera_data->main_transform, p_camera_data->main_projection, p_camera_data->is_orthogonal, p_camera_data->vaspect, p_shadow_atlas, scenario, p_screen_mesh_lod_threshold, p_visible_layers | p_additional_shadow_cull_mask)) {
+				if (_light_instance_update_shadow(ins, p_camera_data->main_transform, p_camera_data->main_projection, p_camera_data->is_orthogonal, p_camera_data->vaspect, p_shadow_atlas, scenario, p_screen_mesh_lod_threshold, p_visible_layers | p_additional_shadow_cull_mask, p_camera, p_viewmodel_projection && !p_viewmodel_cast_world_shadows)) {
 					light->make_shadow_dirty();
 				}
 				RENDER_TIMESTAMP("< Render Light3D " + itos(i));
