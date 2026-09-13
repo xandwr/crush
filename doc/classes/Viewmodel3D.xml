@@ -6,6 +6,7 @@
 	<description>
 		[Viewmodel3D] marks its visual descendants for a separate geometry pass by the nearest ancestor [Camera3D]. This is useful for first-person arms, weapons, and held objects that need their own field of view and clipping planes.
 		The descendants remain in the camera's [World3D] and retain their world transforms, materials, skeletons, lighting, and shadow reception. They are omitted from the owning camera's normal geometry pass. The viewmodel pass reuses the camera's color buffer with freshly cleared depth and occurs before final post-processing and tonemapping.
+		Screen-reading viewmodel shaders sample the completed world color. Depth-reading viewmodel shaders and depth-aware camera effects sample the world camera's depth, which the viewmodel pass preserves. Because the world and viewmodel use different projections, sampled world depth cannot be compared directly with viewmodel fragment depth or reconstructed using the viewmodel projection.
 		A [Viewmodel3D] must be a descendant of a [Camera3D]. Nested viewmodels are not supported.
 	</description>
 	<tutorials>

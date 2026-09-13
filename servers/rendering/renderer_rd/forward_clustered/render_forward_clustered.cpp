@@ -2471,6 +2471,14 @@ void RenderForwardClustered::_render_scene(RenderDataRD *p_render_data, const Co
 		_fill_render_list(RENDER_LIST_OPAQUE, p_render_data, PASS_MODE_COLOR);
 		render_list[RENDER_LIST_OPAQUE].sort_by_key();
 		render_list[RENDER_LIST_ALPHA].sort_by_reverse_depth_and_priority();
+		if (scene_state.used_screen_texture) {
+			_render_buffers_ensure_screen_texture(p_render_data);
+			_render_buffers_copy_screen_texture(p_render_data);
+		}
+		if (scene_state.used_depth_texture) {
+			_render_buffers_ensure_depth_texture(p_render_data);
+			_render_buffers_copy_depth_texture(p_render_data);
+		}
 
 		uint32_t viewmodel_uniform_buffer_index = _setup_environment(p_render_data, false, screen_size, screen_size, p_default_bg_color, false);
 		RID viewmodel_framebuffer = FramebufferCacheRD::get_singleton()->get_cache_multiview(rb->get_view_count(), rb->get_internal_texture(), rb->get_viewmodel_depth_texture());

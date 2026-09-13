@@ -2953,6 +2953,22 @@ void RasterizerSceneGLES3::render_scene(const Ref<RenderSceneBuffers> &p_render_
 		_fill_render_list(RENDER_LIST_OPAQUE, &viewmodel_render_data, PASS_MODE_COLOR);
 		render_list[RENDER_LIST_OPAQUE].sort_by_key();
 		render_list[RENDER_LIST_ALPHA].sort_by_reverse_depth_and_priority();
+		if (scene_state.used_screen_texture || scene_state.used_depth_texture) {
+			rb->check_backbuffer(scene_state.used_screen_texture, scene_state.used_depth_texture);
+			glBindFramebuffer(GL_READ_FRAMEBUFFER, rb->get_internal_fbo());
+			glReadBuffer(GL_COLOR_ATTACHMENT0);
+			glBindFramebuffer(GL_DRAW_FRAMEBUFFER, rb->get_backbuffer_fbo());
+			if (scene_state.used_screen_texture) {
+				glBlitFramebuffer(0, 0, screen_size.x, screen_size.y, 0, 0, screen_size.x, screen_size.y, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+				glActiveTexture(GL_TEXTURE0 + config->max_texture_image_units - 6);
+				glBindTexture(GL_TEXTURE_2D, rb->get_backbuffer());
+			}
+			if (scene_state.used_depth_texture) {
+				glBlitFramebuffer(0, 0, screen_size.x, screen_size.y, 0, 0, screen_size.x, screen_size.y, GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT, GL_NEAREST);
+				glActiveTexture(GL_TEXTURE0 + config->max_texture_image_units - 7);
+				glBindTexture(GL_TEXTURE_2D, rb->get_backbuffer_depth());
+			}
+		}
 
 		glBindFramebuffer(GL_FRAMEBUFFER, rb->get_viewmodel_fbo());
 		glViewport(0, 0, screen_size.x, screen_size.y);
