@@ -36,9 +36,11 @@ TEST_FORCE_LINK(test_viewmodel_3d)
 
 #include "core/object/class_db.h"
 #include "scene/3d/camera_3d.h"
+#include "scene/3d/visual_instance_3d.h"
 #include "scene/3d/viewmodel_3d.h"
 #include "scene/main/scene_tree.h"
 #include "scene/main/window.h"
+#include "servers/rendering/rendering_server.h"
 
 namespace TestViewmodel3D {
 
@@ -137,6 +139,38 @@ TEST_CASE("[SceneTree][Viewmodel3D] Nearest camera owns viewmodel") {
 	CHECK(viewmodel->get_camera_3d() == inner_camera);
 
 	memdelete(outer_camera);
+}
+
+TEST_CASE("[SceneTree][Viewmodel3D] Visual instance ownership") {
+	Window *root = SceneTree::get_singleton()->get_root();
+	Camera3D *first_camera = memnew(Camera3D);
+	Camera3D *second_camera = memnew(Camera3D);
+	Viewmodel3D *viewmodel = memnew(Viewmodel3D);
+	Node3D *subtree = memnew(Node3D);
+	VisualInstance3D *first_visual = memnew(VisualInstance3D);
+
+	root->add_child(first_camera);
+	root->add_child(second_camera);
+	first_camera->add_child(viewmodel);
+	viewmodel->add_child(subtree);
+	subtree->add_child(first_visual);
+	CHECK(RenderingServer::get_singleton()->instance_get_viewmodel_camera(first_visual->get_instance()) == first_camera->get_camera());
+
+	VisualInstance3D *dynamic_visual = memnew(VisualInstance3D);
+	subtree->add_child(dynamic_visual);
+	CHECK(RenderingServer::get_singleton()->instance_get_viewmodel_camera(dynamic_visual->get_instance()) == first_camera->get_camera());
+
+	viewmodel->reparent(second_camera);
+	CHECK(RenderingServer::get_singleton()->instance_get_viewmodel_camera(first_visual->get_instance()) == second_camera->get_camera());
+	CHECK(RenderingServer::get_singleton()->instance_get_viewmodel_camera(dynamic_visual->get_instance()) == second_camera->get_camera());
+
+	second_camera->remove_child(viewmodel);
+	CHECK_FALSE(RenderingServer::get_singleton()->instance_get_viewmodel_camera(first_visual->get_instance()).is_valid());
+	CHECK_FALSE(RenderingServer::get_singleton()->instance_get_viewmodel_camera(dynamic_visual->get_instance()).is_valid());
+
+	memdelete(viewmodel);
+	memdelete(first_camera);
+	memdelete(second_camera);
 }
 
 } // namespace TestViewmodel3D

@@ -47,6 +47,7 @@ class VisualInstance3D : public Node3D {
 
 protected:
 	void _update_visibility();
+	void _update_viewmodel_camera();
 
 	void set_instance_use_identity_transform(bool p_enable);
 	virtual void fti_update_servers_xform() override;

@@ -282,6 +282,7 @@ public:
 
 		uint32_t flags = 0;
 		uint32_t layer_mask = 0; //for fast layer-mask discard
+		RID viewmodel_camera;
 		RID base_rid;
 		union {
 			uint64_t instance_data_rid;
@@ -424,6 +425,7 @@ public:
 		RSE::ShadowCastingSetting cast_shadows;
 
 		uint32_t layer_mask;
+		RID viewmodel_camera;
 		// Fit in 32 bits.
 		bool mirror : 1;
 		bool receive_shadows : 1;
@@ -1029,6 +1031,8 @@ public:
 	virtual void instance_set_base(RID p_instance, RID p_base);
 	virtual void instance_set_scenario(RID p_instance, RID p_scenario);
 	virtual void instance_set_layer_mask(RID p_instance, uint32_t p_mask);
+	virtual void instance_set_viewmodel_camera(RID p_instance, RID p_camera);
+	virtual RID instance_get_viewmodel_camera(RID p_instance) const;
 	virtual void instance_set_pivot_data(RID p_instance, float p_sorting_offset, bool p_use_aabb_center);
 	virtual void instance_set_transform(RID p_instance, const Transform3D &p_transform);
 	virtual void instance_attach_object_instance_id(RID p_instance, ObjectID p_id);

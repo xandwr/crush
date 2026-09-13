@@ -961,6 +961,22 @@ void RendererSceneCull::instance_set_layer_mask(RID p_instance, uint32_t p_mask)
 	}
 }
 
+void RendererSceneCull::instance_set_viewmodel_camera(RID p_instance, RID p_camera) {
+	Instance *instance = instance_owner.get_or_null(p_instance);
+	ERR_FAIL_NULL(instance);
+
+	instance->viewmodel_camera = p_camera;
+	if (instance->scenario && instance->array_index >= 0) {
+		instance->scenario->instance_data[instance->array_index].viewmodel_camera = p_camera;
+	}
+}
+
+RID RendererSceneCull::instance_get_viewmodel_camera(RID p_instance) const {
+	const Instance *instance = instance_owner.get_or_null(p_instance);
+	ERR_FAIL_NULL_V(instance, RID());
+	return instance->viewmodel_camera;
+}
+
 void RendererSceneCull::instance_set_pivot_data(RID p_instance, float p_sorting_offset, bool p_use_aabb_center) {
 	Instance *instance = instance_owner.get_or_null(p_instance);
 	ERR_FAIL_NULL(instance);
@@ -1774,6 +1790,7 @@ void RendererSceneCull::_update_instance(Instance *p_instance) const {
 		InstanceData idata;
 		idata.instance = p_instance;
 		idata.layer_mask = p_instance->layer_mask;
+		idata.viewmodel_camera = p_instance->viewmodel_camera;
 		idata.flags = p_instance->base_type; //changing it means de-indexing, so this never needs to be changed later
 		idata.base_rid = p_instance->base;
 		idata.parent_array_index = p_instance->visibility_parent ? p_instance->visibility_parent->array_index : -1;
