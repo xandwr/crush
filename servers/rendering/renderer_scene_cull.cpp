@@ -143,6 +143,18 @@ void RendererSceneCull::camera_set_viewmodel_projection(RID p_camera, float p_fo
 	camera->viewmodel_zfar = p_z_far;
 }
 
+void RendererSceneCull::camera_set_viewmodel_enabled(RID p_camera, bool p_enabled) {
+	Camera *camera = camera_owner.get_or_null(p_camera);
+	ERR_FAIL_NULL(camera);
+	camera->viewmodel_enabled = p_enabled;
+}
+
+bool RendererSceneCull::camera_is_viewmodel_enabled(RID p_camera) const {
+	const Camera *camera = camera_owner.get_or_null(p_camera);
+	ERR_FAIL_NULL_V(camera, false);
+	return camera->viewmodel_enabled;
+}
+
 void RendererSceneCull::camera_set_environment(RID p_camera, RID p_env) {
 	Camera *camera = camera_owner.get_or_null(p_camera);
 	ERR_FAIL_NULL(camera);
@@ -2812,7 +2824,7 @@ void RendererSceneCull::render_camera(const Ref<RenderSceneBuffers> &p_render_bu
 	// For now just cull on the first camera
 	RendererSceneOcclusionCull::get_singleton()->buffer_update(p_viewport, camera_data.main_transform, camera_data.main_projection, camera_data.is_orthogonal);
 
-	_render_scene(&camera_data, p_render_buffers, environment, camera->attributes, compositor, camera->visible_layers, p_scenario, p_viewport, p_shadow_atlas, RID(), -1, p_screen_mesh_lod_threshold, p_window_output_max_value, true, r_render_info, camera->additional_shadow_cull_mask, p_camera, p_xr_interface.is_null() ? &viewmodel_projection : nullptr);
+	_render_scene(&camera_data, p_render_buffers, environment, camera->attributes, compositor, camera->visible_layers, p_scenario, p_viewport, p_shadow_atlas, RID(), -1, p_screen_mesh_lod_threshold, p_window_output_max_value, true, r_render_info, camera->additional_shadow_cull_mask, p_camera, p_xr_interface.is_null() && camera->viewmodel_enabled ? &viewmodel_projection : nullptr);
 #endif
 }
 

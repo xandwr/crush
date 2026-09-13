@@ -87,6 +87,7 @@ public:
 		float viewmodel_fov = 54.0;
 		float viewmodel_znear = 0.01;
 		float viewmodel_zfar = 100.0;
+		bool viewmodel_enabled = false;
 		bool vaspect;
 		RID env;
 		RID attributes;
@@ -118,6 +119,8 @@ public:
 	virtual void camera_set_cull_mask(RID p_camera, uint32_t p_layers);
 	virtual void camera_set_additional_shadow_cull_mask(RID p_camera, uint32_t p_layers);
 	virtual void camera_set_viewmodel_projection(RID p_camera, float p_fovy_degrees, float p_z_near, float p_z_far);
+	virtual void camera_set_viewmodel_enabled(RID p_camera, bool p_enabled);
+	virtual bool camera_is_viewmodel_enabled(RID p_camera) const;
 	virtual void camera_set_environment(RID p_camera, RID p_env);
 	virtual void camera_set_camera_attributes(RID p_camera, RID p_attributes);
 	virtual void camera_set_compositor(RID p_camera, RID p_compositor);

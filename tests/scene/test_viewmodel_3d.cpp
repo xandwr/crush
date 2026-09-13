@@ -154,7 +154,14 @@ TEST_CASE("[SceneTree][Viewmodel3D] Visual instance ownership") {
 	first_camera->add_child(viewmodel);
 	viewmodel->add_child(subtree);
 	subtree->add_child(first_visual);
+	CHECK(RenderingServer::get_singleton()->camera_is_viewmodel_enabled(first_camera->get_camera()));
 	CHECK(RenderingServer::get_singleton()->instance_get_viewmodel_camera(first_visual->get_instance()) == first_camera->get_camera());
+
+	viewmodel->set_enabled(false);
+	CHECK_FALSE(RenderingServer::get_singleton()->camera_is_viewmodel_enabled(first_camera->get_camera()));
+	CHECK(RenderingServer::get_singleton()->instance_get_viewmodel_camera(first_visual->get_instance()) == first_camera->get_camera());
+	viewmodel->set_enabled(true);
+	CHECK(RenderingServer::get_singleton()->camera_is_viewmodel_enabled(first_camera->get_camera()));
 
 	VisualInstance3D *dynamic_visual = memnew(VisualInstance3D);
 	subtree->add_child(dynamic_visual);

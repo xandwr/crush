@@ -44,12 +44,20 @@ void Viewmodel3D::_update_camera() {
 		}
 	}
 	_update_camera_projection();
+	_update_camera_enabled();
 }
 
 void Viewmodel3D::_update_camera_projection() {
 	Camera3D *camera = get_camera_3d();
 	if (camera) {
 		RenderingServer::get_singleton()->camera_set_viewmodel_projection(camera->get_camera(), fov, _near, _far);
+	}
+}
+
+void Viewmodel3D::_update_camera_enabled() {
+	Camera3D *camera = get_camera_3d();
+	if (camera) {
+		RenderingServer::get_singleton()->camera_set_viewmodel_enabled(camera->get_camera(), enabled);
 	}
 }
 
@@ -93,6 +101,7 @@ Camera3D *Viewmodel3D::get_camera_3d() const {
 
 void Viewmodel3D::set_enabled(bool p_enabled) {
 	enabled = p_enabled;
+	_update_camera_enabled();
 }
 
 bool Viewmodel3D::is_enabled() const {

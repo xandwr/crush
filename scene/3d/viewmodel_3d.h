@@ -46,6 +46,7 @@ class Viewmodel3D : public Node3D {
 
 	void _update_camera();
 	void _update_camera_projection();
+	void _update_camera_enabled();
 
 protected:
 	void _notification(int p_what);
