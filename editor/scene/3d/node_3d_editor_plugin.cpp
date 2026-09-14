@@ -82,6 +82,7 @@
 #include "editor/scene/3d/gizmos/physics/spring_arm_3d_gizmo_plugin.h"
 #include "editor/scene/3d/gizmos/physics/vehicle_body_3d_gizmo_plugin.h"
 #include "editor/scene/3d/gizmos/reflection_probe_gizmo_plugin.h"
+#include "editor/scene/3d/gizmos/rope_3d_gizmo_plugin.h"
 #include "editor/scene/3d/gizmos/spring_bone_3d_gizmo_plugin.h"
 #include "editor/scene/3d/gizmos/sprite_base_3d_gizmo_plugin.h"
 #include "editor/scene/3d/gizmos/two_bone_ik_3d_gizmo_plugin.h"
@@ -10099,6 +10100,7 @@ void Node3DEditor::_register_all_gizmos() {
 	add_gizmo_plugin(Ref<Label3DGizmoPlugin>(memnew(Label3DGizmoPlugin)));
 	add_gizmo_plugin(Ref<GeometryInstance3DGizmoPlugin>(memnew(GeometryInstance3DGizmoPlugin)));
 	add_gizmo_plugin(Ref<Marker3DGizmoPlugin>(memnew(Marker3DGizmoPlugin)));
+	add_gizmo_plugin(Ref<Rope3DGizmoPlugin>(memnew(Rope3DGizmoPlugin)));
 	add_gizmo_plugin(Ref<RayCast3DGizmoPlugin>(memnew(RayCast3DGizmoPlugin)));
 	add_gizmo_plugin(Ref<ShapeCast3DGizmoPlugin>(memnew(ShapeCast3DGizmoPlugin)));
 	add_gizmo_plugin(Ref<SpringArm3DGizmoPlugin>(memnew(SpringArm3DGizmoPlugin)));

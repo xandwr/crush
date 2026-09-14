@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="Rope3D" inherits="GeometryInstance3D" api_type="core" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../class.xsd">
+	<brief_description>An elastic particle chain with optional tube rendering and one-way world collision.</brief_description>
+	<description>Simulates a world-space elastic chain with XPBD constraints. Stretch compliance is distributed across the chain; mass is distributed by rest arc length, with half masses at the endpoints. Attachments never move their target nodes. Hard attachments are restored exactly even when they exceed the authored length or are inside colliders. Finite solver iterations leave residual error.
+Prediction uses explicit velocities and exponential per-second damping. Each substep resets multipliers, predicts positions, projects attachments and guided pose, alternates stretch traversal, projects rest-angle bend, resolves contacts, restores hard pins, and reconstructs velocities. Targets are sampled once per advancement and interpolated between samples over substeps. Reset and mode changes clear velocities and interpolation history. Topology changes resample the current curve and clear velocities; rest-length changes preserve motion.
+Simulation points are world-space, so parent motion and nonuniform scale do not change world rest length or collision radius. Initial curves and externally posed points are local. Singular transforms suspend geometry updates with a configuration warning. Unresolved or freed NodePath targets release their constraints, preserve state, and produce configuration warnings until resolved.
+Automatic simulation advances only in physics callbacks and renders interpolated published states when physics interpolation is enabled. Manual simulation refreshes geometry synchronously. Node transform interpolation is disabled to avoid interpolating the world-space chain twice. The editor displays the initial tube and gizmo without advancing simulation. Hidden nodes continue simulating; disable simulation explicitly to stop them.
+Collision uses finite-radius particle sweeps for prediction and constraint corrections plus up to three overlap-recovery queries per particle and projection pass. Query work is bounded by particle_count * (solver_iterations + 1) * 5 per substep. Contact friction removes inward normal velocity and reduces tangential velocity. Collision uses the physics tick world snapshot and manual advancement with collision is valid only in a physics callback. Collision is unavailable with a warning in builds without 3D physics.
+Particle collision does not guarantee collision of complete spans, continuous collision against fast moving obstacles, knot preservation, or collision-free teleports. Self-collision, two-way forces, cutting, twisting, and automatic gravity-area sampling are not implemented. Use sufficient particle density. A grappling line can be rendered, but this node does not pull gameplay bodies.</description>
+	<tutorials>
+		<link title="XPBD algorithm basis">https://mmacklin.com/xpbd.pdf</link>
+	</tutorials>
+	<methods>
+		<method name="add_collision_exception">
+			<return type="void" />
+			<param index="0" name="rid" type="RID" />
+			<description>Excludes a valid physics body RID from one-way particle queries.</description>
+		</method>
+		<method name="advance_simulation">
+			<return type="void" />
+			<param index="0" name="delta" type="float" />
+			<description>Advances once in MANUAL mode, splitting the supplied seconds into bounded substeps. AUTO rejects this call to prevent double simulation. Simulation-disabled nodes do not advance. Collision requires a physics callback. Excess time is discarded and accumulated in [method get_dropped_simulation_time].</description>
+		</method>
+		<method name="apply_impulse">
+			<return type="void" />
+			<param index="0" name="index" type="int" />
+			<param index="1" name="world_impulse" type="Vector3" />
+			<description>Applies a world-space impulse in newton-seconds using configured mass. Hard pins ignore impulses.</description>
+		</method>
+		<method name="attach_particle">
+			<return type="void" />
+			<param index="0" name="index" type="int" />
+			<param index="1" name="node_path" type="NodePath" />
+			<param index="2" name="local_offset" type="Vector3" default="Vector3(0, 0, 0)" />
+			<param index="3" name="compliance" type="float" default="0.0" />
+			<description>Attaches any particle to a persistent [NodePath] and target-local offset. At most one positional attachment exists per particle. Zero compliance is a hard pin; positive compliance is in meters per newton. Freed or unresolved targets release the constraint. Inspector attachments use attachments/index/node_path, local_offset, compliance, and enabled for scene persistence.</description>
+		</method>
+		<method name="clear_attachment">
+			<return type="void" />
+			<param index="0" name="index" type="int" />
+			<description>Releases the attachment at the particle, preserving position, velocity, and configured mass.</description>
+		</method>
+		<method name="clear_collision_exceptions">
+			<return type="void" />
+			<description>Clears all collision RID exclusions.</description>
+		</method>
+		<method name="clear_pose_targets">
+			<return type="void" />
+			<description>Clears guided attraction and its sampling history.</description>
+		</method>
+		<method name="get_dropped_simulation_time" qualifiers="const">
+			<return type="float" />
+			<description>Returns accumulated discarded simulation time in seconds since the last reset or mode change.</description>
+		</method>
+		<method name="get_max_segment_error" qualifiers="const">
+			<return type="float" />
+			<description>Returns the largest absolute difference between actual and authored segment length, in meters.</description>
+		</method>
+		<method name="get_mesh" qualifiers="const">
+			<return type="ArrayMesh" />
+			<description>Returns the internally owned tube mesh for inspection. Do not mutate it. Topology remains persistent between ordinary point updates.</description>
+		</method>
+		<method name="get_point_position" qualifiers="const">
+			<return type="Vector3" />
+			<param index="0" name="index" type="int" />
+			<description>Returns the current world-space position of a valid particle index.</description>
+		</method>
+		<method name="get_render_points" qualifiers="const">
+			<return type="PackedVector3Array" />
+			<description>Returns a copy of the local externally posed points, or authored local initial points before a pose is supplied.</description>
+		</method>
+		<method name="get_simulated_points" qualifiers="const">
+			<return type="PackedVector3Array" />
+			<description>Returns a copy of the current published world-space solver points. Render interpolation and externally posed geometry do not modify this state.</description>
+		</method>
+		<method name="has_hard_pin_contact" qualifiers="const">
+			<return type="bool" />
+			<description>Returns whether collision detected a hard pin inside a collider during the last advancement. Hard attachments have priority over collision.</description>
+		</method>
+		<method name="is_overstretched" qualifiers="const">
+			<return type="bool" />
+			<description>Returns whether consecutive hard anchors are farther apart than the sum of authored segment lengths between them. Anchors remain exact and authored length remains unchanged.</description>
+		</method>
+		<method name="remove_collision_exception">
+			<return type="void" />
+			<param index="0" name="rid" type="RID" />
+			<description>Removes a collision RID exclusion.</description>
+		</method>
+		<method name="reset_simulation">
+			<return type="void" />
+			<description>Resets to the arc-length-sampled authored local initial curve transformed to world space, or the default straight downward chain. Clears velocities, multipliers, target interpolation, tube frame history, and dropped-time diagnostics.</description>
+		</method>
+		<method name="reset_to_points">
+			<return type="void" />
+			<param index="0" name="world_points" type="PackedVector3Array" />
+			<description>Resets to exactly [member particle_count] finite world-space points without changing authored length or captured rest angles. Clears all motion, interpolation, and time diagnostics.</description>
+		</method>
+		<method name="set_particle_target">
+			<return type="void" />
+			<param index="0" name="index" type="int" />
+			<param index="1" name="world_position" type="Vector3" />
+			<param index="2" name="compliance" type="float" default="0.0" />
+			<description>Sets a persistent explicit world-space target, replacing any node attachment. Zero compliance pins exactly; positive compliance gives an elastic positional attachment in meters per newton. Repeated calls update the target without resetting target interpolation.</description>
+		</method>
+		<method name="set_pose_targets">
+			<return type="void" />
+			<param index="0" name="world_points" type="PackedVector3Array" />
+			<param index="1" name="compliance" type="float" />
+			<description>Sets one world-space guided target per particle, with positional compliance in meters per newton. Requires exactly [member particle_count] finite points. Guidance applies to unattached particles; explicit attachments take priority. It is separate from the captured bend rest shape.</description>
+		</method>
+		<method name="set_render_points">
+			<return type="void" />
+			<param index="0" name="local_points" type="PackedVector3Array" />
+			<description>Immediately updates local-space tube geometry while simulation is disabled. Requires exactly [member particle_count] finite points. Does not alter solver state and rejects calls while simulation is enabled.</description>
+		</method>
+	</methods>
+	<members>
+		<member name="bend_compliance" type="float" setter="set_bend_compliance" getter="get_bend_compliance" default="0.01">Nonnegative inverse flexural rigidity, in radians per newton meter squared. Each rest-angle constraint multiplies this by the dual rest segment length, giving angular compliance in radians per newton-meter. Zero is a hard angle constraint.</member>
+		<member name="bend_enabled" type="bool" setter="set_bend_enabled" getter="get_bend_enabled" default="false">Enables optional rest-angle bend constraints captured from the authored initial shape. Guided pose attraction is independent.</member>
+		<member name="cap_mode" type="int" setter="set_cap_mode" getter="get_cap_mode" default="1" enum="Rope3D.CapMode">No caps, flat caps, or rounded hemisphere caps. Changing cap mode rebuilds topology. Circular tubes provide no physical twist simulation.</member>
+		<member name="collision_enabled" type="bool" setter="set_collision_enabled" getter="get_collision_enabled" default="false">Enables optional one-way finite-radius world particle collision. Defaults off. Hard attachments have priority. Requires 3D physics and a physics callback.</member>
+		<member name="collision_margin" type="float" setter="set_collision_margin" getter="get_collision_margin" default="0.001">Nonnegative query and overlap-recovery margin in world meters.</member>
+		<member name="collision_mask" type="int" setter="set_collision_mask" getter="get_collision_mask" default="1">Physics body layers tested by particle collision queries. Areas are not queried.</member>
+		<member name="collision_radius" type="float" setter="set_collision_radius" getter="get_collision_radius" default="0.05">Strictly positive world-space particle query radius in meters, independent of visual radius and node scale.</member>
+		<member name="damping" type="float" setter="set_damping" getter="get_damping" default="2">Exponential velocity damping rate per second, nonnegative. Velocity is multiplied by exp(-damping * substep_seconds).</member>
+		<member name="friction" type="float" setter="set_friction" getter="get_friction" default="0.2">Contact coefficient from 0 through 1. Removes inward normal velocity and reduces tangential speed proportional to inward contact velocity.</member>
+		<member name="gravity" type="Vector3" setter="set_gravity" getter="get_gravity" default="Vector3(0, -9.8, 0)">Explicit world-space acceleration in meters per second squared. Does not sample project gravity or Area3D overrides.</member>
+		<member name="max_substep_duration" type="float" setter="set_max_substep_duration" getter="get_max_substep_duration" default="0.008333334">Maximum substep duration in seconds, from 0.00001 through 0.1. Each physics delta is evenly split; smaller deltas use one smaller substep without a separate accumulator.</member>
+		<member name="max_substeps" type="int" setter="set_max_substeps" getter="get_max_substeps" default="8">Maximum substeps per advancement, from 1 through 64. Excess elapsed time is explicitly discarded and reported.</member>
+		<member name="particle_count" type="int" setter="set_particle_count" getter="get_particle_count" default="9">Number of particles, from 2 through 256. Topology edits resample the current curve and clear velocities. Do not resize per frame.</member>
+		<member name="radial_segments" type="int" setter="set_radial_segments" getter="get_radial_segments" default="8">Tube radial sides, from 3 through 64. Rebuilds topology when changed.</member>
+		<member name="radius" type="float" setter="set_radius" getter="get_radius" default="0.05">Strictly positive tube radius in meters during simulation, or rope-local units in posed mode. Independent of collision radius.</member>
+		<member name="render_enabled" type="bool" setter="set_render_enabled" getter="get_render_enabled" default="true">Enables tube geometry. Disable for headless or simulation-only consumers; solver advancement remains independent.</member>
+		<member name="rest_length" type="float" setter="set_rest_length" getter="get_rest_length" default="1">Authored world rest arc length in meters, strictly positive. Stable unless explicitly changed. Changing length preserves positions and velocity and resets constraint multipliers. Hard anchors do not silently lengthen it.</member>
+		<member name="simulation_enabled" type="bool" setter="set_simulation_enabled" getter="get_simulation_enabled" default="true">Explicitly enables solver advancement. Disabling permits [method set_render_points]. Switching modes clears motion/interpolation history.</member>
+		<member name="simulation_process_mode" type="int" setter="set_simulation_process_mode" getter="get_simulation_process_mode" default="0" enum="Rope3D.SimulationProcessMode">AUTO advances in physics callbacks; MANUAL advances only through [method advance_simulation]. Separate from inherited [member Node.process_mode]. Switching clears history.</member>
+		<member name="solver_iterations" type="int" setter="set_solver_iterations" getter="get_solver_iterations" default="6">Projection iterations per substep, from 1 through 64. More iterations improve convergence at increased CPU and collision-query cost.</member>
+		<member name="stretch_compliance" type="float" setter="set_stretch_compliance" getter="get_stretch_compliance" default="0">Whole-chain axial compliance in meters per newton, nonnegative. Each uniform segment uses this value divided by the segment count. Zero is a hard stretch constraint. Finite iterations leave convergence error.</member>
+		<member name="total_mass" type="float" setter="set_total_mass" getter="get_total_mass" default="1">Total configured mass in kilograms, from 0.000001 through 1000000. Distributed by rest arc length with half endpoint masses. Pinning changes effective inverse mass without losing configured mass.</member>
+		<member name="uv_repeat_length" type="float" setter="set_uv_repeat_length" getter="get_uv_repeat_length" default="1">Strictly positive arc length per longitudinal UV repeat, in meters during simulation or local units in posed mode. Circumferential UV runs around the tube.</member>
+		<member name="initial_curve" type="Curve3D" setter="set_initial_curve" getter="get_initial_curve">Authored local initial curve sampled by baked arc length. An empty curve uses a straight downward chain of rest_length. Editing the curve resets simulation and captured rest angles. Nonfinite data is rejected.</member>
+	</members>
+	<constants>
+		<constant name="SIMULATION_PROCESS_AUTO" value="0" enum="SimulationProcessMode">Advance in physics callbacks and interpolate automatic rendering.</constant>
+		<constant name="SIMULATION_PROCESS_MANUAL" value="1" enum="SimulationProcessMode">Advance only explicitly and refresh geometry synchronously.</constant>
+		<constant name="CAP_NONE" value="0" enum="CapMode">Leave tube endpoints open.</constant>
+		<constant name="CAP_FLAT" value="1" enum="CapMode">Close endpoints with flat discs.</constant>
+		<constant name="CAP_ROUND" value="2" enum="CapMode">Close endpoints with rounded hemisphere caps.</constant>
+	</constants>
+</class>
