@@ -39,7 +39,9 @@
 #include "core/os/os.h"
 #include "core/version.h"
 #include "scene/main/scene_tree.h"
+#include "scene/resources/image_texture.h"
 #include "scene/resources/texture.h"
+#include "servers/display/display_server.h"
 #include "servers/rendering/rendering_server.h"
 
 void Material::set_next_pass(const Ref<Material> &p_pass) {
@@ -654,6 +656,7 @@ void BaseMaterial3D::finish_shaders() {
 }
 
 void BaseMaterial3D::_update_shader() {
+	_update_procedural_normal();
 	if (!_is_initialized()) {
 		_mark_ready();
 	}
@@ -1058,7 +1061,7 @@ uniform vec4 refraction_texture_channel;
 		code += "uniform sampler2D depth_texture : hint_depth_texture, repeat_disable, filter_nearest;\n";
 	}
 
-	if (features[FEATURE_NORMAL_MAPPING]) {
+	if (_is_normal_mapping_enabled()) {
 		code += vformat(R"(
 uniform sampler2D texture_normal : hint_roughness_normal, %s;
 uniform float normal_scale : hint_range(-16.0, 16.0);
@@ -1713,7 +1716,7 @@ void fragment() {)";
 )";
 	}
 
-	if (features[FEATURE_NORMAL_MAPPING]) {
+	if (_is_normal_mapping_enabled()) {
 		code += R"(
 	// Normal Map: Enabled
 )";
@@ -1766,7 +1769,7 @@ void fragment() {)";
 	}
 
 	if (features[FEATURE_REFRACTION]) {
-		if (features[FEATURE_NORMAL_MAPPING]) {
+		if (_is_normal_mapping_enabled()) {
 			code += R"(
 	// Refraction: Enabled (with normal map texture)
 	vec3 unpacked_normal = NORMAL_MAP;
@@ -2190,11 +2193,112 @@ float BaseMaterial3D::get_emission_intensity() const {
 
 void BaseMaterial3D::set_normal_scale(float p_normal_scale) {
 	normal_scale = p_normal_scale;
-	_material_set_param(shader_names->normal_scale, p_normal_scale);
+	_material_set_param(shader_names->normal_scale, procedural_normal_enabled ? 1.0f : p_normal_scale);
 }
 
 float BaseMaterial3D::get_normal_scale() const {
 	return normal_scale;
+}
+
+bool BaseMaterial3D::_is_normal_mapping_enabled() const {
+	return procedural_normal_enabled ? procedural_normal_texture.is_valid() : features[FEATURE_NORMAL_MAPPING];
+}
+
+void BaseMaterial3D::_queue_procedural_normal_update() {
+	if (procedural_normal_dirty) {
+		return;
+	}
+	procedural_normal_dirty = true;
+	callable_mp(this, &BaseMaterial3D::_update_procedural_normal).call_deferred();
+}
+
+void BaseMaterial3D::_update_procedural_normal() {
+	if (!procedural_normal_dirty) {
+		return;
+	}
+	procedural_normal_dirty = false;
+	procedural_normal_texture.unref();
+	if (procedural_normal_enabled && textures[TEXTURE_ALBEDO].is_valid() && DisplayServer::get_singleton()->get_name() != "headless") {
+		Ref<Image> source = textures[TEXTURE_ALBEDO]->get_image();
+		if (source.is_valid() && !source->is_empty()) {
+			Ref<Image> normal = source->generate_normal_map(procedural_normal_strength, procedural_normal_smoothing, procedural_normal_invert_height);
+			if (normal.is_valid()) {
+				normal->generate_mipmaps(true);
+				procedural_normal_texture = ImageTexture::create_from_image(normal);
+			}
+		}
+	}
+	Ref<Texture2D> normal = procedural_normal_enabled ? procedural_normal_texture : textures[TEXTURE_NORMAL];
+	_material_set_param(shader_names->texture_names[TEXTURE_NORMAL], normal.is_valid() ? Variant(normal->get_rid()) : Variant());
+	_material_set_param(shader_names->normal_scale, procedural_normal_enabled ? 1.0f : normal_scale);
+	_queue_shader_change();
+}
+
+void BaseMaterial3D::set_procedural_normal_enabled(bool p_enabled) {
+	if (procedural_normal_enabled == p_enabled) {
+		return;
+	}
+	procedural_normal_enabled = p_enabled;
+	_queue_procedural_normal_update();
+	notify_property_list_changed();
+	emit_changed();
+}
+
+bool BaseMaterial3D::is_procedural_normal_enabled() const {
+	return procedural_normal_enabled;
+}
+
+void BaseMaterial3D::set_procedural_normal_strength(double p_strength) {
+	ERR_FAIL_COND(!Math::is_finite(p_strength));
+	p_strength = MAX(p_strength, 0.0);
+	if (procedural_normal_strength == p_strength) {
+		return;
+	}
+	procedural_normal_strength = p_strength;
+	if (procedural_normal_enabled) {
+		_queue_procedural_normal_update();
+	}
+	emit_changed();
+}
+
+double BaseMaterial3D::get_procedural_normal_strength() const {
+	return procedural_normal_strength;
+}
+
+void BaseMaterial3D::set_procedural_normal_smoothing(int p_smoothing) {
+	p_smoothing = CLAMP(p_smoothing, 0, 8);
+	if (procedural_normal_smoothing == p_smoothing) {
+		return;
+	}
+	procedural_normal_smoothing = p_smoothing;
+	if (procedural_normal_enabled) {
+		_queue_procedural_normal_update();
+	}
+	emit_changed();
+}
+
+int BaseMaterial3D::get_procedural_normal_smoothing() const {
+	return procedural_normal_smoothing;
+}
+
+void BaseMaterial3D::set_procedural_normal_invert_height(bool p_invert_height) {
+	if (procedural_normal_invert_height == p_invert_height) {
+		return;
+	}
+	procedural_normal_invert_height = p_invert_height;
+	if (procedural_normal_enabled) {
+		_queue_procedural_normal_update();
+	}
+	emit_changed();
+}
+
+bool BaseMaterial3D::is_procedural_normal_invert_height() const {
+	return procedural_normal_invert_height;
+}
+
+Ref<Texture2D> BaseMaterial3D::get_procedural_normal_texture() {
+	_update_procedural_normal();
+	return procedural_normal_texture;
 }
 
 void BaseMaterial3D::set_rim(float p_rim) {
@@ -2507,10 +2611,23 @@ bool BaseMaterial3D::get_feature(Feature p_feature) const {
 
 void BaseMaterial3D::set_texture(TextureParam p_param, const Ref<Texture2D> &p_texture) {
 	ERR_FAIL_INDEX(p_param, TEXTURE_MAX);
+	if (p_param == TEXTURE_ALBEDO && textures[p_param].is_valid()) {
+		textures[p_param]->disconnect_changed(callable_mp(this, &BaseMaterial3D::_queue_procedural_normal_update));
+	}
 
 	textures[p_param] = p_texture;
 	Variant rid = p_texture.is_valid() ? Variant(p_texture->get_rid()) : Variant();
-	_material_set_param(shader_names->texture_names[p_param], rid);
+	if (p_param != TEXTURE_NORMAL || !procedural_normal_enabled) {
+		_material_set_param(shader_names->texture_names[p_param], rid);
+	}
+	if (p_param == TEXTURE_ALBEDO) {
+		if (p_texture.is_valid()) {
+			p_texture->connect_changed(callable_mp(this, &BaseMaterial3D::_queue_procedural_normal_update));
+		}
+		if (procedural_normal_enabled) {
+			_queue_procedural_normal_update();
+		}
+	}
 
 	if (p_texture.is_valid() && p_param == TEXTURE_ALBEDO) {
 		_material_set_param(shader_names->albedo_texture_size, Vector2i(p_texture->get_width(), p_texture->get_height()));
@@ -2529,6 +2646,9 @@ Ref<Texture2D> BaseMaterial3D::get_texture_by_name(const StringName &p_name) con
 	for (int i = 0; i < (int)BaseMaterial3D::TEXTURE_MAX; i++) {
 		TextureParam param = TextureParam(i);
 		if (p_name == shader_names->texture_names[param]) {
+			if (param == TEXTURE_NORMAL && procedural_normal_enabled) {
+				return const_cast<BaseMaterial3D *>(this)->get_procedural_normal_texture();
+			}
 			return textures[param];
 		}
 	}
@@ -2545,6 +2665,12 @@ BaseMaterial3D::TextureFilter BaseMaterial3D::get_texture_filter() const {
 }
 
 void BaseMaterial3D::_validate_property(PropertyInfo &p_property) const {
+	if (procedural_normal_enabled && p_property.name.begins_with("normal_")) {
+		p_property.usage &= ~PROPERTY_USAGE_EDITOR;
+	}
+	if (!procedural_normal_enabled && p_property.name.begins_with("procedural_normal_") && p_property.name != "procedural_normal_enabled") {
+		p_property.usage &= ~PROPERTY_USAGE_EDITOR;
+	}
 	if (p_property.name == "emission_intensity" && !GLOBAL_GET_CACHED(bool, "rendering/lights_and_shadows/use_physical_light_units")) {
 		p_property.usage = PROPERTY_USAGE_NONE;
 	}
@@ -3359,6 +3485,15 @@ void BaseMaterial3D::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("set_normal_scale", "normal_scale"), &BaseMaterial3D::set_normal_scale);
 	ClassDB::bind_method(D_METHOD("get_normal_scale"), &BaseMaterial3D::get_normal_scale);
+	ClassDB::bind_method(D_METHOD("set_procedural_normal_enabled", "enabled"), &BaseMaterial3D::set_procedural_normal_enabled);
+	ClassDB::bind_method(D_METHOD("is_procedural_normal_enabled"), &BaseMaterial3D::is_procedural_normal_enabled);
+	ClassDB::bind_method(D_METHOD("set_procedural_normal_strength", "strength"), &BaseMaterial3D::set_procedural_normal_strength);
+	ClassDB::bind_method(D_METHOD("get_procedural_normal_strength"), &BaseMaterial3D::get_procedural_normal_strength);
+	ClassDB::bind_method(D_METHOD("set_procedural_normal_smoothing", "smoothing"), &BaseMaterial3D::set_procedural_normal_smoothing);
+	ClassDB::bind_method(D_METHOD("get_procedural_normal_smoothing"), &BaseMaterial3D::get_procedural_normal_smoothing);
+	ClassDB::bind_method(D_METHOD("set_procedural_normal_invert_height", "invert_height"), &BaseMaterial3D::set_procedural_normal_invert_height);
+	ClassDB::bind_method(D_METHOD("is_procedural_normal_invert_height"), &BaseMaterial3D::is_procedural_normal_invert_height);
+	ClassDB::bind_method(D_METHOD("get_procedural_normal_texture"), &BaseMaterial3D::get_procedural_normal_texture);
 
 	ClassDB::bind_method(D_METHOD("set_rim", "rim"), &BaseMaterial3D::set_rim);
 	ClassDB::bind_method(D_METHOD("get_rim"), &BaseMaterial3D::get_rim);
@@ -3608,6 +3743,12 @@ void BaseMaterial3D::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "emission_operator", PROPERTY_HINT_ENUM, "Add,Multiply"), "set_emission_operator", "get_emission_operator");
 	ADD_PROPERTYI(PropertyInfo(Variant::BOOL, "emission_on_uv2"), "set_flag", "get_flag", FLAG_EMISSION_ON_UV2);
 	ADD_PROPERTYI(PropertyInfo(Variant::OBJECT, "emission_texture", PROPERTY_HINT_RESOURCE_TYPE, Texture2D::get_class_static()), "set_texture", "get_texture", TEXTURE_EMISSION);
+
+	ADD_GROUP("Procedural Normal", "procedural_normal_");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "procedural_normal_enabled", PROPERTY_HINT_GROUP_ENABLE), "set_procedural_normal_enabled", "is_procedural_normal_enabled");
+	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "procedural_normal_strength", PROPERTY_HINT_RANGE, "0,16,0.01,or_greater"), "set_procedural_normal_strength", "get_procedural_normal_strength");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "procedural_normal_smoothing", PROPERTY_HINT_RANGE, "0,8,1"), "set_procedural_normal_smoothing", "get_procedural_normal_smoothing");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "procedural_normal_invert_height"), "set_procedural_normal_invert_height", "is_procedural_normal_invert_height");
 
 	ADD_GROUP("Normal Map", "normal_");
 	ADD_PROPERTYI(PropertyInfo(Variant::BOOL, "normal_enabled", PROPERTY_HINT_GROUP_ENABLE), "set_feature", "get_feature", FEATURE_NORMAL_MAPPING);
@@ -3981,6 +4122,9 @@ BaseMaterial3D::BaseMaterial3D(bool p_orm) :
 
 BaseMaterial3D::~BaseMaterial3D() {
 	ERR_FAIL_NULL(RS::get_singleton());
+	if (textures[TEXTURE_ALBEDO].is_valid()) {
+		textures[TEXTURE_ALBEDO]->disconnect_changed(callable_mp(this, &BaseMaterial3D::_queue_procedural_normal_update));
+	}
 
 	{
 		MutexLock lock(shader_map_mutex);

@@ -421,6 +421,7 @@ public:
 	Ref<Image> rgbe_to_srgb();
 	Ref<Image> get_image_from_mipmap(int p_mipmap) const;
 	void bump_map_to_normal_map(float bump_scale = 1.0);
+	Ref<Image> generate_normal_map(double p_strength = 0.8, int p_smoothing = 0, bool p_invert_height = false) const;
 
 	bool detect_signed(bool p_include_mips = true) const;
 

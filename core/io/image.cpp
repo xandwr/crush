@@ -3910,6 +3910,7 @@ void Image::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("normal_map_to_xy"), &Image::normal_map_to_xy);
 	ClassDB::bind_method(D_METHOD("rgbe_to_srgb"), &Image::rgbe_to_srgb);
 	ClassDB::bind_method(D_METHOD("bump_map_to_normal_map", "bump_scale"), &Image::bump_map_to_normal_map, DEFVAL(1.0));
+	ClassDB::bind_method(D_METHOD("generate_normal_map", "strength", "smoothing", "invert_height"), &Image::generate_normal_map, DEFVAL(0.8), DEFVAL(0), DEFVAL(false));
 
 	ClassDB::bind_method(D_METHOD("compute_image_metrics", "compared_image", "use_luma"), &Image::compute_image_metrics);
 
@@ -4095,6 +4096,71 @@ Ref<Image> Image::get_image_from_mipmap(int p_mipmap) const {
 
 	image->mipmaps = false;
 	return image;
+}
+
+Ref<Image> Image::generate_normal_map(double p_strength, int p_smoothing, bool p_invert_height) const {
+	ERR_FAIL_COND_V(is_empty(), Ref<Image>());
+	ERR_FAIL_COND_V(!Math::is_finite(p_strength), Ref<Image>());
+	Ref<Image> source = duplicate();
+	if (source->is_compressed()) {
+		ERR_FAIL_COND_V(source->decompress() != OK, Ref<Image>());
+	}
+	source->clear_mipmaps();
+	source->convert(FORMAT_RGBA8);
+	const uint8_t *input = source->data.ptr();
+	Vector<float> heights;
+	heights.resize(width * height);
+	float *height_write = heights.ptrw();
+	for (int i = 0; i < width * height; i++) {
+		const float red = input[i * 4] / 255.0;
+		const float green = input[i * 4 + 1] / 255.0;
+		const float blue = input[i * 4 + 2] / 255.0;
+		height_write[i] = red * 0.2126 + green * 0.7152 + blue * 0.0722;
+	}
+	Vector<float> smoothed;
+	if (p_smoothing > 0) {
+		smoothed.resize(width * height);
+	}
+	for (int pass = 0; pass < CLAMP(p_smoothing, 0, 8); pass++) {
+		const float *samples = heights.ptr();
+		float *output = smoothed.ptrw();
+		for (int y = 0; y < height; y++) {
+			for (int x = 0; x < width; x++) {
+				double total = 0.0;
+				for (int oy = -1; oy <= 1; oy++) {
+					const int row = (y + oy + height) % height * width;
+					for (int ox = -1; ox <= 1; ox++) {
+						total += samples[row + (x + ox + width) % width];
+					}
+				}
+				output[y * width + x] = total / 9.0;
+			}
+		}
+		SWAP(heights, smoothed);
+	}
+	const float *samples = heights.ptr();
+	Vector<uint8_t> pixels;
+	pixels.resize(width * height * 4);
+	uint8_t *output = pixels.ptrw();
+	const double scale = MAX(p_strength, 0.0) * (p_invert_height ? -1.0 : 1.0) / 8.0;
+	for (int y = 0; y < height; y++) {
+		const int top = (y + height - 1) % height * width;
+		const int middle = y * width;
+		const int bottom = (y + 1) % height * width;
+		for (int x = 0; x < width; x++) {
+			const int left = (x + width - 1) % width;
+			const int right = (x + 1) % width;
+			const double dx = double(samples[top + right]) + 2.0 * samples[middle + right] + samples[bottom + right] - samples[top + left] - 2.0 * samples[middle + left] - samples[bottom + left];
+			const double dy = double(samples[bottom + left]) + 2.0 * samples[bottom + x] + samples[bottom + right] - samples[top + left] - 2.0 * samples[top + x] - samples[top + right];
+			const Vector3 normal = Vector3(-dx * scale, dy * scale, 1.0).normalized();
+			const int index = (middle + x) * 4;
+			output[index] = Math::round((normal.x * 0.5 + 0.5) * 255.0);
+			output[index + 1] = Math::round((normal.y * 0.5 + 0.5) * 255.0);
+			output[index + 2] = Math::round((normal.z * 0.5 + 0.5) * 255.0);
+			output[index + 3] = 255;
+		}
+	}
+	return create_from_data(width, height, false, FORMAT_RGBA8, pixels);
 }
 
 void Image::bump_map_to_normal_map(float bump_scale) {

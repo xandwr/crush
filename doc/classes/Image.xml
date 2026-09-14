@@ -69,6 +69,15 @@
 				Converts a bump map to a normal map. A bump map provides a height offset per-pixel, while a normal map provides a normal direction per pixel.
 			</description>
 		</method>
+		<method name="generate_normal_map" qualifiers="const">
+			<return type="Image" />
+			<param index="0" name="strength" type="float" default="0.8" />
+			<param index="1" name="smoothing" type="int" default="0" />
+			<param index="2" name="invert_height" type="bool" default="false" />
+			<description>
+				Returns a new RGBA8 normal map estimated from this image's albedo luminance. Uses wrapped Sobel sampling with X+, Y+, Z+ normals. [param smoothing] applies up to eight wrapped 3 by 3 box smoothing passes. [param invert_height] reverses relief. The source image is unchanged. Mipmaps are not generated; use [method generate_mipmaps] with renormalization enabled. Compressed sources are decompressed when supported.
+			</description>
+		</method>
 		<method name="clear_mipmaps">
 			<return type="void" />
 			<description>

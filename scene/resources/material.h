@@ -447,7 +447,7 @@ private:
 		mk.stencil_reference = stencil_reference;
 
 		for (int i = 0; i < FEATURE_MAX; i++) {
-			if (features[i]) {
+			if (i == FEATURE_NORMAL_MAPPING ? _is_normal_mapping_enabled() : features[i]) {
 				mk.feature_mask |= ((uint64_t)1 << i);
 			}
 		}
@@ -543,6 +543,15 @@ private:
 	float emission_energy_multiplier = 1.0f;
 	float emission_intensity = 1000.0f; // In nits, equivalent to indoor lighting.
 	float normal_scale = 0.0f;
+	bool procedural_normal_enabled = false;
+	double procedural_normal_strength = 0.8;
+	int procedural_normal_smoothing = 0;
+	bool procedural_normal_invert_height = false;
+	bool procedural_normal_dirty = false;
+	Ref<Texture2D> procedural_normal_texture;
+	void _queue_procedural_normal_update();
+	void _update_procedural_normal();
+	bool _is_normal_mapping_enabled() const;
 	float rim = 0.0f;
 	float rim_tint = 0.0f;
 	float clearcoat = 0.0f;
@@ -665,6 +674,15 @@ public:
 
 	void set_normal_scale(float p_normal_scale);
 	float get_normal_scale() const;
+	void set_procedural_normal_enabled(bool p_enabled);
+	bool is_procedural_normal_enabled() const;
+	void set_procedural_normal_strength(double p_strength);
+	double get_procedural_normal_strength() const;
+	void set_procedural_normal_smoothing(int p_smoothing);
+	int get_procedural_normal_smoothing() const;
+	void set_procedural_normal_invert_height(bool p_invert_height);
+	bool is_procedural_normal_invert_height() const;
+	Ref<Texture2D> get_procedural_normal_texture();
 
 	void set_rim(float p_rim);
 	float get_rim() const;

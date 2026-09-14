@@ -10,6 +10,12 @@
 		<link title="Standard Material 3D and ORM Material 3D">$DOCS_URL/tutorials/3d/standard_material_3d.html</link>
 	</tutorials>
 	<methods>
+		<method name="get_procedural_normal_texture">
+			<return type="Texture2D" />
+			<description>
+				Returns the transient normal texture generated from [member albedo_texture], updating it if necessary. Returns [code]null[/code] when disabled, when the source image is unavailable, or when running headless. Generated textures are not saved with the material.
+			</description>
+		</method>
 		<method name="get_feature" qualifiers="const">
 			<return type="bool" />
 			<param index="0" name="feature" type="int" enum="BaseMaterial3D.Feature" />
@@ -299,6 +305,18 @@
 		</member>
 		<member name="no_depth_test" type="bool" setter="set_flag" getter="get_flag" default="false">
 			If [code]true[/code], depth testing is disabled and the object will be drawn in render order.
+		</member>
+		<member name="procedural_normal_enabled" type="bool" setter="set_procedural_normal_enabled" getter="is_procedural_normal_enabled" default="false">
+			Generates a normal map from [member albedo_texture] using luminance and wrapped Sobel sampling. Replaces the regular Normal Map controls and rendering while enabled, preserving [member normal_enabled], [member normal_scale], and [member normal_texture] for restoration when disabled. Generation runs in native code when albedo or procedural settings change, with renormalized mipmaps. Headless processes do not generate textures. Albedo must support image retrieval and decompression. Painted colors and baked shadows may be interpreted as relief.
+		</member>
+		<member name="procedural_normal_strength" type="float" setter="set_procedural_normal_strength" getter="get_procedural_normal_strength" default="0.8">
+			The strength of generated relief. Zero produces a neutral normal map.
+		</member>
+		<member name="procedural_normal_smoothing" type="int" setter="set_procedural_normal_smoothing" getter="get_procedural_normal_smoothing" default="0">
+			Number of wrapped 3 by 3 box smoothing passes applied to luminance before computing normals. Clamped to the range 0 through 8.
+		</member>
+		<member name="procedural_normal_invert_height" type="bool" setter="set_procedural_normal_invert_height" getter="is_procedural_normal_invert_height" default="false">
+			Reverses generated relief, making bright areas depressions rather than raised areas.
 		</member>
 		<member name="normal_enabled" type="bool" setter="set_feature" getter="get_feature" default="false">
 			If [code]true[/code], normal mapping is enabled. This has a slight performance cost, especially on mobile GPUs.
