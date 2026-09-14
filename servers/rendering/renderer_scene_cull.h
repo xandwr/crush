@@ -87,7 +87,7 @@ public:
 		float viewmodel_fov = 54.0;
 		float viewmodel_znear = 0.01;
 		float viewmodel_zfar = 100.0;
-		bool viewmodel_enabled = false;
+		bool viewmodel_projection_enabled = false;
 		bool viewmodel_cast_world_shadows = false;
 		bool vaspect;
 		RID env;
@@ -120,8 +120,8 @@ public:
 	virtual void camera_set_cull_mask(RID p_camera, uint32_t p_layers);
 	virtual void camera_set_additional_shadow_cull_mask(RID p_camera, uint32_t p_layers);
 	virtual void camera_set_viewmodel_projection(RID p_camera, float p_fovy_degrees, float p_z_near, float p_z_far);
-	virtual void camera_set_viewmodel_enabled(RID p_camera, bool p_enabled);
-	virtual bool camera_is_viewmodel_enabled(RID p_camera) const;
+	virtual void camera_set_viewmodel_projection_enabled(RID p_camera, bool p_enabled);
+	virtual bool camera_is_viewmodel_projection_enabled(RID p_camera) const;
 	virtual void camera_set_viewmodel_cast_world_shadows(RID p_camera, bool p_enabled);
 	virtual bool camera_is_viewmodel_casting_world_shadows(RID p_camera) const;
 	virtual void camera_set_environment(RID p_camera, RID p_env);
@@ -293,6 +293,7 @@ public:
 		uint32_t flags = 0;
 		uint32_t layer_mask = 0; //for fast layer-mask discard
 		RID viewmodel_camera;
+		bool viewmodel_exclusive = false;
 		RID base_rid;
 		union {
 			uint64_t instance_data_rid;
@@ -437,6 +438,7 @@ public:
 		uint32_t layer_mask;
 		RID viewmodel_camera;
 		// Fit in 32 bits.
+		bool viewmodel_exclusive : 1;
 		bool mirror : 1;
 		bool receive_shadows : 1;
 		bool visible : 1;
@@ -1046,8 +1048,9 @@ public:
 	virtual void instance_set_base(RID p_instance, RID p_base);
 	virtual void instance_set_scenario(RID p_instance, RID p_scenario);
 	virtual void instance_set_layer_mask(RID p_instance, uint32_t p_mask);
-	virtual void instance_set_viewmodel_camera(RID p_instance, RID p_camera);
+	virtual void instance_set_viewmodel_camera(RID p_instance, RID p_camera, bool p_exclusive);
 	virtual RID instance_get_viewmodel_camera(RID p_instance) const;
+	virtual bool instance_is_viewmodel_exclusive(RID p_instance) const;
 	virtual void instance_set_pivot_data(RID p_instance, float p_sorting_offset, bool p_use_aabb_center);
 	virtual void instance_set_transform(RID p_instance, const Transform3D &p_transform);
 	virtual void instance_attach_object_instance_id(RID p_instance, ObjectID p_id);

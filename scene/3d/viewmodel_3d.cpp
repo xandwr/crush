@@ -30,43 +30,81 @@
 
 #include "viewmodel_3d.h"
 
+#include "core/math/math_funcs.h"
 #include "core/object/class_db.h"
 #include "scene/3d/camera_3d.h"
 #include "servers/rendering/rendering_server.h"
 
+void Viewmodel3D::_set_camera(Camera3D *p_camera) {
+	Camera3D *old_camera = get_camera_3d();
+	if (old_camera == p_camera) {
+		return;
+	}
+	if (old_camera) {
+		if (old_camera->_is_viewmodel_owner(this)) {
+			RenderingServer::get_singleton()->camera_set_viewmodel_projection(old_camera->get_camera(), 54.0, 0.01, 100.0);
+			RenderingServer::get_singleton()->camera_set_viewmodel_projection_enabled(old_camera->get_camera(), false);
+			RenderingServer::get_singleton()->camera_set_viewmodel_cast_world_shadows(old_camera->get_camera(), false);
+		}
+		old_camera->_unregister_viewmodel(this);
+	}
+	camera_id = p_camera ? p_camera->get_instance_id() : ObjectID();
+	if (p_camera) {
+		p_camera->_register_viewmodel(this);
+	}
+	_camera_ownership_changed();
+}
+
 void Viewmodel3D::_update_camera() {
-	camera_id = ObjectID();
+	Camera3D *camera = nullptr;
 	for (Node *ancestor = get_parent(); ancestor; ancestor = ancestor->get_parent()) {
-		Camera3D *camera = Object::cast_to<Camera3D>(ancestor);
+		if (Object::cast_to<Viewmodel3D>(ancestor)) {
+			break;
+		}
+		camera = Object::cast_to<Camera3D>(ancestor);
 		if (camera) {
-			camera_id = camera->get_instance_id();
 			break;
 		}
 	}
+	_set_camera(camera);
+}
+
+void Viewmodel3D::_camera_ownership_changed() {
 	_update_camera_projection();
-	_update_camera_enabled();
+	_update_camera_projection_enabled();
 	_update_camera_shadow_casting();
+	_update_visual_instances();
+	update_configuration_warnings();
 }
 
 void Viewmodel3D::_update_camera_projection() {
 	Camera3D *camera = get_camera_3d();
-	if (camera) {
+	if (camera && _owns_camera() && _far > _near) {
 		RenderingServer::get_singleton()->camera_set_viewmodel_projection(camera->get_camera(), fov, _near, _far);
 	}
 }
 
-void Viewmodel3D::_update_camera_enabled() {
+void Viewmodel3D::_update_camera_projection_enabled() {
 	Camera3D *camera = get_camera_3d();
-	if (camera) {
-		RenderingServer::get_singleton()->camera_set_viewmodel_enabled(camera->get_camera(), enabled);
+	if (camera && _owns_camera()) {
+		RenderingServer::get_singleton()->camera_set_viewmodel_projection_enabled(camera->get_camera(), use_viewmodel_projection);
 	}
 }
 
 void Viewmodel3D::_update_camera_shadow_casting() {
 	Camera3D *camera = get_camera_3d();
-	if (camera) {
+	if (camera && _owns_camera()) {
 		RenderingServer::get_singleton()->camera_set_viewmodel_cast_world_shadows(camera->get_camera(), cast_world_shadows);
 	}
+}
+
+void Viewmodel3D::_update_visual_instances() {
+	propagate_notification(NOTIFICATION_VIEWMODEL_CHANGED);
+}
+
+bool Viewmodel3D::_owns_camera() const {
+	Camera3D *camera = get_camera_3d();
+	return camera && camera->_is_viewmodel_owner(this);
 }
 
 void Viewmodel3D::_notification(int p_what) {
@@ -78,15 +116,17 @@ void Viewmodel3D::_notification(int p_what) {
 			break;
 		case NOTIFICATION_EXIT_TREE:
 		case NOTIFICATION_UNPARENTED:
-			camera_id = ObjectID();
-			update_configuration_warnings();
+			_set_camera(nullptr);
 			break;
 	}
 }
 
 void Viewmodel3D::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("set_enabled", "enabled"), &Viewmodel3D::set_enabled);
-	ClassDB::bind_method(D_METHOD("is_enabled"), &Viewmodel3D::is_enabled);
+	ClassDB::bind_method(D_METHOD("get_camera_3d"), &Viewmodel3D::get_camera_3d);
+	ClassDB::bind_method(D_METHOD("set_use_viewmodel_projection", "enabled"), &Viewmodel3D::set_use_viewmodel_projection);
+	ClassDB::bind_method(D_METHOD("is_using_viewmodel_projection"), &Viewmodel3D::is_using_viewmodel_projection);
+	ClassDB::bind_method(D_METHOD("set_visible_to_other_cameras", "enabled"), &Viewmodel3D::set_visible_to_other_cameras);
+	ClassDB::bind_method(D_METHOD("is_visible_to_other_cameras"), &Viewmodel3D::is_visible_to_other_cameras);
 	ClassDB::bind_method(D_METHOD("set_fov", "fov"), &Viewmodel3D::set_fov);
 	ClassDB::bind_method(D_METHOD("get_fov"), &Viewmodel3D::get_fov);
 	ClassDB::bind_method(D_METHOD("set_near", "near"), &Viewmodel3D::set_near);
@@ -96,7 +136,8 @@ void Viewmodel3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_cast_world_shadows", "enabled"), &Viewmodel3D::set_cast_world_shadows);
 	ClassDB::bind_method(D_METHOD("is_casting_world_shadows"), &Viewmodel3D::is_casting_world_shadows);
 
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "enabled"), "set_enabled", "is_enabled");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "use_viewmodel_projection"), "set_use_viewmodel_projection", "is_using_viewmodel_projection");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "visible_to_other_cameras"), "set_visible_to_other_cameras", "is_visible_to_other_cameras");
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "fov", PROPERTY_HINT_RANGE, "1,179,0.1,degrees"), "set_fov", "get_fov");
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "near", PROPERTY_HINT_RANGE, "0.001,10,0.001,or_greater,exp,suffix:m"), "set_near", "get_near");
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "far", PROPERTY_HINT_RANGE, "0.01,4000,0.01,or_greater,exp,suffix:m"), "set_far", "get_far");
@@ -107,17 +148,27 @@ Camera3D *Viewmodel3D::get_camera_3d() const {
 	return ObjectDB::get_instance<Camera3D>(camera_id);
 }
 
-void Viewmodel3D::set_enabled(bool p_enabled) {
-	enabled = p_enabled;
-	_update_camera_enabled();
+void Viewmodel3D::set_use_viewmodel_projection(bool p_enabled) {
+	use_viewmodel_projection = p_enabled;
+	_update_camera_projection_enabled();
+	_update_visual_instances();
 }
 
-bool Viewmodel3D::is_enabled() const {
-	return enabled;
+bool Viewmodel3D::is_using_viewmodel_projection() const {
+	return use_viewmodel_projection;
+}
+
+void Viewmodel3D::set_visible_to_other_cameras(bool p_enabled) {
+	visible_to_other_cameras = p_enabled;
+	_update_visual_instances();
+}
+
+bool Viewmodel3D::is_visible_to_other_cameras() const {
+	return visible_to_other_cameras;
 }
 
 void Viewmodel3D::set_fov(real_t p_fov) {
-	ERR_FAIL_COND(p_fov < 1.0 || p_fov > 179.0);
+	ERR_FAIL_COND(!Math::is_finite(p_fov) || p_fov < 1.0 || p_fov > 179.0);
 	fov = p_fov;
 	_update_camera_projection();
 }
@@ -127,9 +178,10 @@ real_t Viewmodel3D::get_fov() const {
 }
 
 void Viewmodel3D::set_near(real_t p_near) {
-	ERR_FAIL_COND(p_near <= 0.0);
+	ERR_FAIL_COND(!Math::is_finite(p_near) || p_near <= 0.0);
 	_near = p_near;
 	_update_camera_projection();
+	update_configuration_warnings();
 }
 
 real_t Viewmodel3D::get_near() const {
@@ -137,9 +189,10 @@ real_t Viewmodel3D::get_near() const {
 }
 
 void Viewmodel3D::set_far(real_t p_far) {
-	ERR_FAIL_COND(p_far <= 0.0);
+	ERR_FAIL_COND(!Math::is_finite(p_far) || p_far <= 0.0);
 	_far = p_far;
 	_update_camera_projection();
+	update_configuration_warnings();
 }
 
 real_t Viewmodel3D::get_far() const {
@@ -171,6 +224,18 @@ PackedStringArray Viewmodel3D::get_configuration_warnings() const {
 
 	if (!has_camera_ancestor) {
 		warnings.push_back(RTR("Viewmodel3D must be a descendant of a Camera3D node."));
+	}
+
+	Camera3D *camera = get_camera_3d();
+	if (camera && camera->_get_viewmodel_count() > 1) {
+		if (_owns_camera()) {
+			warnings.push_back(RTR("Only one Viewmodel3D can control a Camera3D. This node is active; additional Viewmodel3D nodes targeting the same camera render normally."));
+		} else {
+			warnings.push_back(RTR("Another Viewmodel3D already controls this Camera3D. This node renders normally until it becomes the camera's owner."));
+		}
+	}
+	if (_far <= _near) {
+		warnings.push_back(RTR("The viewmodel far clipping distance must be greater than the near clipping distance."));
 	}
 
 	return warnings;

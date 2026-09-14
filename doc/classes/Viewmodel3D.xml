@@ -5,18 +5,23 @@
 	</brief_description>
 	<description>
 		[Viewmodel3D] marks its visual descendants for a separate geometry pass by the nearest ancestor [Camera3D]. This is useful for first-person arms, weapons, and held objects that need their own field of view and clipping planes.
-		The descendants remain in the camera's [World3D] and retain their world transforms, materials, skeletons, lighting, and shadow reception. They are omitted from the owning camera's normal geometry pass. The viewmodel pass reuses the camera's color buffer with freshly cleared depth and occurs before final post-processing and tonemapping.
+		The descendants remain in the camera's [World3D] and retain their world transforms, materials, skeletons, lighting, and shadow reception. By default, they are visible only to the owning camera and are omitted from its normal geometry pass. The viewmodel pass reuses the camera's color buffer with freshly cleared depth and occurs before final post-processing and tonemapping.
 		Screen-reading viewmodel shaders sample the completed world color. Depth-reading viewmodel shaders and depth-aware camera effects sample the world camera's depth, which the viewmodel pass preserves. Because the world and viewmodel use different projections, sampled world depth cannot be compared directly with viewmodel fragment depth or reconstructed using the viewmodel projection.
-		A [Viewmodel3D] must be a descendant of a [Camera3D]. Nested viewmodels are not supported.
+		A [Viewmodel3D] must be a descendant of a [Camera3D]. Nested viewmodels are not supported, and only one [Viewmodel3D] can control each camera.
 	</description>
 	<tutorials>
 	</tutorials>
+	<methods>
+		<method name="get_camera_3d" qualifiers="const">
+			<return type="Camera3D" />
+			<description>
+				Returns the nearest ancestor [Camera3D], or [code]null[/code] if this node has no valid camera ancestor.
+			</description>
+		</method>
+	</methods>
 	<members>
 		<member name="cast_world_shadows" type="bool" setter="set_cast_world_shadows" getter="is_casting_world_shadows" default="false">
 			If [code]true[/code], visual descendants can cast shadows into the world according to their normal shadow settings.
-		</member>
-		<member name="enabled" type="bool" setter="set_enabled" getter="is_enabled" default="true">
-			If [code]true[/code], visual descendants are rendered in the viewmodel pass. If [code]false[/code], they are rendered normally.
 		</member>
 		<member name="far" type="float" setter="set_far" getter="get_far" default="100.0">
 			The viewmodel projection's far clipping distance in meters.
@@ -26,6 +31,12 @@
 		</member>
 		<member name="near" type="float" setter="set_near" getter="get_near" default="0.01">
 			The viewmodel projection's near clipping distance in meters.
+		</member>
+		<member name="use_viewmodel_projection" type="bool" setter="set_use_viewmodel_projection" getter="is_using_viewmodel_projection" default="true">
+			If [code]true[/code], visual descendants are rendered in the viewmodel pass. If [code]false[/code], they return to ordinary world rendering, including visibility from other cameras and reflection probes.
+		</member>
+		<member name="visible_to_other_cameras" type="bool" setter="set_visible_to_other_cameras" getter="is_visible_to_other_cameras" default="false">
+			If [code]true[/code], visual descendants are also rendered as ordinary geometry by other cameras and reflection probes. The owning camera continues to render them only in its viewmodel pass.
 		</member>
 	</members>
 </class>

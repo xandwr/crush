@@ -69,17 +69,19 @@ void VisualInstance3D::_update_visibility() {
 
 void VisualInstance3D::_update_viewmodel_camera() {
 	RID camera_rid;
+	bool exclusive = false;
 	for (Node *ancestor = get_parent(); ancestor; ancestor = ancestor->get_parent()) {
 		Viewmodel3D *viewmodel = Object::cast_to<Viewmodel3D>(ancestor);
 		if (viewmodel) {
 			Camera3D *camera = viewmodel->get_camera_3d();
-			if (camera) {
+			if (camera && viewmodel->_owns_camera() && viewmodel->is_using_viewmodel_projection()) {
 				camera_rid = camera->get_camera();
+				exclusive = !viewmodel->is_visible_to_other_cameras();
 			}
 			break;
 		}
 	}
-	RenderingServer::get_singleton()->instance_set_viewmodel_camera(instance, camera_rid);
+	RenderingServer::get_singleton()->instance_set_viewmodel_camera(instance, camera_rid, exclusive);
 }
 
 void VisualInstance3D::set_instance_use_identity_transform(bool p_enable) {
@@ -130,7 +132,7 @@ void VisualInstance3D::_notification(int p_what) {
 		} break;
 
 		case NOTIFICATION_EXIT_WORLD: {
-			RenderingServer::get_singleton()->instance_set_viewmodel_camera(instance, RID());
+			RenderingServer::get_singleton()->instance_set_viewmodel_camera(instance, RID(), false);
 			RenderingServer::get_singleton()->instance_set_scenario(instance, RID());
 			RenderingServer::get_singleton()->instance_attach_skeleton(instance, RID());
 			_set_vi_visible(false);
@@ -138,6 +140,10 @@ void VisualInstance3D::_notification(int p_what) {
 
 		case NOTIFICATION_VISIBILITY_CHANGED: {
 			_update_visibility();
+		} break;
+
+		case Viewmodel3D::NOTIFICATION_VIEWMODEL_CHANGED: {
+			_update_viewmodel_camera();
 		} break;
 	}
 }

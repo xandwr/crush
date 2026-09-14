@@ -36,8 +36,8 @@ TEST_FORCE_LINK(test_viewmodel_3d)
 
 #include "core/object/class_db.h"
 #include "scene/3d/camera_3d.h"
-#include "scene/3d/visual_instance_3d.h"
 #include "scene/3d/viewmodel_3d.h"
+#include "scene/3d/visual_instance_3d.h"
 #include "scene/main/scene_tree.h"
 #include "scene/main/window.h"
 #include "servers/rendering/rendering_server.h"
@@ -49,23 +49,36 @@ TEST_CASE("[SceneTree][Viewmodel3D] Properties") {
 
 	Viewmodel3D *viewmodel = memnew(Viewmodel3D);
 
-	CHECK(viewmodel->is_enabled());
+	CHECK(viewmodel->is_using_viewmodel_projection());
+	CHECK_FALSE(viewmodel->is_visible_to_other_cameras());
 	CHECK(viewmodel->get_fov() == doctest::Approx(54.0));
 	CHECK(viewmodel->get_near() == doctest::Approx(0.01));
 	CHECK(viewmodel->get_far() == doctest::Approx(100.0));
 	CHECK_FALSE(viewmodel->is_casting_world_shadows());
 
-	viewmodel->set_enabled(false);
+	viewmodel->set_use_viewmodel_projection(false);
+	viewmodel->set_visible_to_other_cameras(true);
 	viewmodel->set_fov(70.0);
 	viewmodel->set_near(0.02);
 	viewmodel->set_far(200.0);
 	viewmodel->set_cast_world_shadows(true);
 
-	CHECK_FALSE(viewmodel->is_enabled());
+	CHECK_FALSE(viewmodel->is_using_viewmodel_projection());
+	CHECK(viewmodel->is_visible_to_other_cameras());
 	CHECK(viewmodel->get_fov() == doctest::Approx(70.0));
 	CHECK(viewmodel->get_near() == doctest::Approx(0.02));
 	CHECK(viewmodel->get_far() == doctest::Approx(200.0));
 	CHECK(viewmodel->is_casting_world_shadows());
+	CHECK(viewmodel->has_method("get_camera_3d"));
+
+	ERR_PRINT_OFF;
+	viewmodel->set_fov(Math::NaN);
+	viewmodel->set_near(Math::INF);
+	viewmodel->set_far(-Math::INF);
+	ERR_PRINT_ON;
+	CHECK(viewmodel->get_fov() == doctest::Approx(70.0));
+	CHECK(viewmodel->get_near() == doctest::Approx(0.02));
+	CHECK(viewmodel->get_far() == doctest::Approx(200.0));
 
 	memdelete(viewmodel);
 }
@@ -97,6 +110,14 @@ TEST_CASE("[SceneTree][Viewmodel3D] Camera ancestry warnings") {
 		CHECK(inner->get_configuration_warnings().size() == 1);
 		memdelete(camera);
 	}
+
+	SUBCASE("Invalid clipping range") {
+		Viewmodel3D *viewmodel = memnew(Viewmodel3D);
+		viewmodel->set_near(2.0);
+		viewmodel->set_far(1.0);
+		CHECK(viewmodel->get_configuration_warnings().size() == 2);
+		memdelete(viewmodel);
+	}
 }
 
 TEST_CASE("[SceneTree][Viewmodel3D] Camera ownership") {
@@ -115,16 +136,48 @@ TEST_CASE("[SceneTree][Viewmodel3D] Camera ownership") {
 	root->add_child(second_camera);
 	first_camera->add_child(subtree);
 	CHECK(viewmodel->get_camera_3d() == first_camera);
+	CHECK(RenderingServer::get_singleton()->camera_is_viewmodel_projection_enabled(first_camera->get_camera()));
 
 	subtree->reparent(second_camera);
 	CHECK(viewmodel->get_camera_3d() == second_camera);
+	CHECK_FALSE(RenderingServer::get_singleton()->camera_is_viewmodel_projection_enabled(first_camera->get_camera()));
+	CHECK(RenderingServer::get_singleton()->camera_is_viewmodel_projection_enabled(second_camera->get_camera()));
 
 	second_camera->remove_child(subtree);
 	CHECK(viewmodel->get_camera_3d() == nullptr);
+	CHECK_FALSE(RenderingServer::get_singleton()->camera_is_viewmodel_projection_enabled(second_camera->get_camera()));
 
 	memdelete(subtree);
 	memdelete(first_camera);
 	memdelete(second_camera);
+}
+
+TEST_CASE("[SceneTree][Viewmodel3D] Camera ownership is exclusive") {
+	Window *root = SceneTree::get_singleton()->get_root();
+	Camera3D *camera = memnew(Camera3D);
+	Viewmodel3D *first = memnew(Viewmodel3D);
+	Viewmodel3D *second = memnew(Viewmodel3D);
+	VisualInstance3D *first_visual = memnew(VisualInstance3D);
+	VisualInstance3D *second_visual = memnew(VisualInstance3D);
+
+	root->add_child(camera);
+	camera->add_child(first);
+	camera->add_child(second);
+	first->add_child(first_visual);
+	second->add_child(second_visual);
+
+	CHECK(first->get_configuration_warnings().size() == 1);
+	CHECK(second->get_configuration_warnings().size() == 1);
+	CHECK(RenderingServer::get_singleton()->instance_get_viewmodel_camera(first_visual->get_instance()) == camera->get_camera());
+	CHECK_FALSE(RenderingServer::get_singleton()->instance_get_viewmodel_camera(second_visual->get_instance()).is_valid());
+
+	camera->remove_child(first);
+	CHECK(first->get_camera_3d() == nullptr);
+	CHECK(second->get_configuration_warnings().is_empty());
+	CHECK(RenderingServer::get_singleton()->instance_get_viewmodel_camera(second_visual->get_instance()) == camera->get_camera());
+
+	memdelete(first);
+	memdelete(camera);
 }
 
 TEST_CASE("[SceneTree][Viewmodel3D] Nearest camera owns viewmodel") {
@@ -154,28 +207,36 @@ TEST_CASE("[SceneTree][Viewmodel3D] Visual instance ownership") {
 	first_camera->add_child(viewmodel);
 	viewmodel->add_child(subtree);
 	subtree->add_child(first_visual);
-	CHECK(RenderingServer::get_singleton()->camera_is_viewmodel_enabled(first_camera->get_camera()));
+	CHECK(RenderingServer::get_singleton()->camera_is_viewmodel_projection_enabled(first_camera->get_camera()));
 	CHECK_FALSE(RenderingServer::get_singleton()->camera_is_viewmodel_casting_world_shadows(first_camera->get_camera()));
 	CHECK(RenderingServer::get_singleton()->instance_get_viewmodel_camera(first_visual->get_instance()) == first_camera->get_camera());
+	CHECK(RenderingServer::get_singleton()->instance_is_viewmodel_exclusive(first_visual->get_instance()));
+	viewmodel->set_visible_to_other_cameras(true);
+	CHECK_FALSE(RenderingServer::get_singleton()->instance_is_viewmodel_exclusive(first_visual->get_instance()));
+	viewmodel->set_visible_to_other_cameras(false);
+	CHECK(RenderingServer::get_singleton()->instance_is_viewmodel_exclusive(first_visual->get_instance()));
 	viewmodel->set_cast_world_shadows(true);
 	CHECK(RenderingServer::get_singleton()->camera_is_viewmodel_casting_world_shadows(first_camera->get_camera()));
 	viewmodel->set_cast_world_shadows(false);
 
-	viewmodel->set_enabled(false);
-	CHECK_FALSE(RenderingServer::get_singleton()->camera_is_viewmodel_enabled(first_camera->get_camera()));
+	viewmodel->set_use_viewmodel_projection(false);
+	CHECK_FALSE(RenderingServer::get_singleton()->camera_is_viewmodel_projection_enabled(first_camera->get_camera()));
+	CHECK_FALSE(RenderingServer::get_singleton()->instance_get_viewmodel_camera(first_visual->get_instance()).is_valid());
+	viewmodel->set_use_viewmodel_projection(true);
+	CHECK(RenderingServer::get_singleton()->camera_is_viewmodel_projection_enabled(first_camera->get_camera()));
 	CHECK(RenderingServer::get_singleton()->instance_get_viewmodel_camera(first_visual->get_instance()) == first_camera->get_camera());
-	viewmodel->set_enabled(true);
-	CHECK(RenderingServer::get_singleton()->camera_is_viewmodel_enabled(first_camera->get_camera()));
 
 	VisualInstance3D *dynamic_visual = memnew(VisualInstance3D);
 	subtree->add_child(dynamic_visual);
 	CHECK(RenderingServer::get_singleton()->instance_get_viewmodel_camera(dynamic_visual->get_instance()) == first_camera->get_camera());
 
 	viewmodel->reparent(second_camera);
+	CHECK_FALSE(RenderingServer::get_singleton()->camera_is_viewmodel_projection_enabled(first_camera->get_camera()));
 	CHECK(RenderingServer::get_singleton()->instance_get_viewmodel_camera(first_visual->get_instance()) == second_camera->get_camera());
 	CHECK(RenderingServer::get_singleton()->instance_get_viewmodel_camera(dynamic_visual->get_instance()) == second_camera->get_camera());
 
 	second_camera->remove_child(viewmodel);
+	CHECK_FALSE(RenderingServer::get_singleton()->camera_is_viewmodel_projection_enabled(second_camera->get_camera()));
 	CHECK_FALSE(RenderingServer::get_singleton()->instance_get_viewmodel_camera(first_visual->get_instance()).is_valid());
 	CHECK_FALSE(RenderingServer::get_singleton()->instance_get_viewmodel_camera(dynamic_visual->get_instance()).is_valid());
 

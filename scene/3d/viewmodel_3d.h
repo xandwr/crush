@@ -36,18 +36,27 @@ class Camera3D;
 
 class Viewmodel3D : public Node3D {
 	GDCLASS(Viewmodel3D, Node3D);
+	friend class Camera3D;
+	friend class VisualInstance3D;
+
+	static constexpr int NOTIFICATION_VIEWMODEL_CHANGED = 1001;
 
 	ObjectID camera_id;
-	bool enabled = true;
+	bool use_viewmodel_projection = true;
+	bool visible_to_other_cameras = false;
 	real_t fov = 54.0;
 	real_t _near = 0.01;
 	real_t _far = 100.0;
 	bool cast_world_shadows = false;
 
+	void _set_camera(Camera3D *p_camera);
 	void _update_camera();
+	void _camera_ownership_changed();
 	void _update_camera_projection();
-	void _update_camera_enabled();
+	void _update_camera_projection_enabled();
 	void _update_camera_shadow_casting();
+	void _update_visual_instances();
+	bool _owns_camera() const;
 
 protected:
 	void _notification(int p_what);
@@ -56,8 +65,11 @@ protected:
 public:
 	Camera3D *get_camera_3d() const;
 
-	void set_enabled(bool p_enabled);
-	bool is_enabled() const;
+	void set_use_viewmodel_projection(bool p_enabled);
+	bool is_using_viewmodel_projection() const;
+
+	void set_visible_to_other_cameras(bool p_enabled);
+	bool is_visible_to_other_cameras() const;
 
 	void set_fov(real_t p_fov);
 	real_t get_fov() const;

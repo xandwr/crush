@@ -143,16 +143,16 @@ void RendererSceneCull::camera_set_viewmodel_projection(RID p_camera, float p_fo
 	camera->viewmodel_zfar = p_z_far;
 }
 
-void RendererSceneCull::camera_set_viewmodel_enabled(RID p_camera, bool p_enabled) {
+void RendererSceneCull::camera_set_viewmodel_projection_enabled(RID p_camera, bool p_enabled) {
 	Camera *camera = camera_owner.get_or_null(p_camera);
 	ERR_FAIL_NULL(camera);
-	camera->viewmodel_enabled = p_enabled;
+	camera->viewmodel_projection_enabled = p_enabled;
 }
 
-bool RendererSceneCull::camera_is_viewmodel_enabled(RID p_camera) const {
+bool RendererSceneCull::camera_is_viewmodel_projection_enabled(RID p_camera) const {
 	const Camera *camera = camera_owner.get_or_null(p_camera);
 	ERR_FAIL_NULL_V(camera, false);
-	return camera->viewmodel_enabled;
+	return camera->viewmodel_projection_enabled;
 }
 
 void RendererSceneCull::camera_set_viewmodel_cast_world_shadows(RID p_camera, bool p_enabled) {
@@ -993,13 +993,15 @@ void RendererSceneCull::instance_set_layer_mask(RID p_instance, uint32_t p_mask)
 	}
 }
 
-void RendererSceneCull::instance_set_viewmodel_camera(RID p_instance, RID p_camera) {
+void RendererSceneCull::instance_set_viewmodel_camera(RID p_instance, RID p_camera, bool p_exclusive) {
 	Instance *instance = instance_owner.get_or_null(p_instance);
 	ERR_FAIL_NULL(instance);
 
 	instance->viewmodel_camera = p_camera;
+	instance->viewmodel_exclusive = p_exclusive;
 	if (instance->scenario && instance->array_index >= 0) {
 		instance->scenario->instance_data[instance->array_index].viewmodel_camera = p_camera;
+		instance->scenario->instance_data[instance->array_index].viewmodel_exclusive = p_exclusive;
 	}
 }
 
@@ -1007,6 +1009,12 @@ RID RendererSceneCull::instance_get_viewmodel_camera(RID p_instance) const {
 	const Instance *instance = instance_owner.get_or_null(p_instance);
 	ERR_FAIL_NULL_V(instance, RID());
 	return instance->viewmodel_camera;
+}
+
+bool RendererSceneCull::instance_is_viewmodel_exclusive(RID p_instance) const {
+	const Instance *instance = instance_owner.get_or_null(p_instance);
+	ERR_FAIL_NULL_V(instance, false);
+	return instance->viewmodel_exclusive;
 }
 
 void RendererSceneCull::instance_set_pivot_data(RID p_instance, float p_sorting_offset, bool p_use_aabb_center) {
@@ -1823,6 +1831,7 @@ void RendererSceneCull::_update_instance(Instance *p_instance) const {
 		idata.instance = p_instance;
 		idata.layer_mask = p_instance->layer_mask;
 		idata.viewmodel_camera = p_instance->viewmodel_camera;
+		idata.viewmodel_exclusive = p_instance->viewmodel_exclusive;
 		idata.flags = p_instance->base_type; //changing it means de-indexing, so this never needs to be changed later
 		idata.base_rid = p_instance->base;
 		idata.parent_array_index = p_instance->visibility_parent ? p_instance->visibility_parent->array_index : -1;
@@ -2836,7 +2845,7 @@ void RendererSceneCull::render_camera(const Ref<RenderSceneBuffers> &p_render_bu
 	// For now just cull on the first camera
 	RendererSceneOcclusionCull::get_singleton()->buffer_update(p_viewport, camera_data.main_transform, camera_data.main_projection, camera_data.is_orthogonal);
 
-	_render_scene(&camera_data, p_render_buffers, environment, camera->attributes, compositor, camera->visible_layers, p_scenario, p_viewport, p_shadow_atlas, RID(), -1, p_screen_mesh_lod_threshold, p_window_output_max_value, true, r_render_info, camera->additional_shadow_cull_mask, p_camera, p_xr_interface.is_null() && camera->viewmodel_enabled ? &viewmodel_projection : nullptr, camera->viewmodel_cast_world_shadows);
+	_render_scene(&camera_data, p_render_buffers, environment, camera->attributes, compositor, camera->visible_layers, p_scenario, p_viewport, p_shadow_atlas, RID(), -1, p_screen_mesh_lod_threshold, p_window_output_max_value, true, r_render_info, camera->additional_shadow_cull_mask, p_camera, p_xr_interface.is_null() && camera->viewmodel_projection_enabled ? &viewmodel_projection : nullptr, camera->viewmodel_cast_world_shadows);
 #endif
 }
 
@@ -2974,6 +2983,7 @@ void RendererSceneCull::_scene_cull(CullData &cull_data, InstanceCullResult &cul
 		uint32_t base_type = idata.flags & InstanceData::FLAG_BASE_TYPE_MASK;
 		bool is_geometry = (1 << base_type) & RSE::INSTANCE_GEOMETRY_MASK;
 		bool is_viewmodel_geometry = is_geometry && idata.viewmodel_camera == cull_data.camera && cull_data.viewmodel_camera_matrix;
+		bool is_viewmodel_hidden = is_geometry && idata.viewmodel_exclusive && idata.viewmodel_camera != cull_data.camera;
 		uint32_t visibility_flags = idata.flags & (InstanceData::FLAG_VISIBILITY_DEPENDENCY_HIDDEN_CLOSE_RANGE | InstanceData::FLAG_VISIBILITY_DEPENDENCY_HIDDEN | InstanceData::FLAG_VISIBILITY_DEPENDENCY_FADE_CHILDREN);
 		int32_t visibility_check = -1;
 
@@ -2986,7 +2996,7 @@ void RendererSceneCull::_scene_cull(CullData &cull_data, InstanceCullResult &cul
 #define VIS_CHECK (visibility_check < 0 ? (visibility_check = (visibility_flags != InstanceData::FLAG_VISIBILITY_DEPENDENCY_NEEDS_CHECK || (VIS_RANGE_CHECK && VIS_PARENT_CHECK))) : visibility_check)
 #define OCCLUSION_CULLED (cull_data.occlusion_buffer != nullptr && (cull_data.scenario->instance_data[i].flags & InstanceData::FLAG_IGNORE_OCCLUSION_CULLING) == 0 && cull_data.occlusion_buffer->is_occluded(cull_data.scenario->instance_aabbs[i].bounds, cull_data.cam_transform.origin, inv_cam_transform, *cull_data.camera_matrix, z_near, is_orthogonal, cull_data.scenario->instance_data[i].occlusion_timeout))
 
-		if (!HIDDEN_BY_VISIBILITY_CHECKS) {
+		if (!HIDDEN_BY_VISIBILITY_CHECKS && !is_viewmodel_hidden) {
 			if ((LAYER_CHECK && VIS_CHECK && ((is_viewmodel_geometry && IN_VIEWMODEL_FRUSTUM) || (!is_viewmodel_geometry && IN_FRUSTUM(cull_data.cull->frustum) && !OCCLUSION_CULLED))) || (cull_data.scenario->instance_data[i].flags & InstanceData::FLAG_IGNORE_ALL_CULLING)) {
 				if (base_type == RSE::INSTANCE_LIGHT) {
 					cull_result.lights.push_back(idata.instance);

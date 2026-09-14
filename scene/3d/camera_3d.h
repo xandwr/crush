@@ -37,8 +37,11 @@
 #include "scene/resources/compositor.h"
 #include "scene/resources/environment.h"
 
+class Viewmodel3D;
+
 class Camera3D : public Node3D {
 	GDCLASS(Camera3D, Node3D);
+	friend class Viewmodel3D;
 
 public:
 	enum ProjectionType {
@@ -77,6 +80,12 @@ private:
 
 	RID camera;
 	RID scenario_id;
+	Vector<ObjectID> viewmodel_ids;
+
+	void _register_viewmodel(Viewmodel3D *p_viewmodel);
+	void _unregister_viewmodel(Viewmodel3D *p_viewmodel);
+	bool _is_viewmodel_owner(const Viewmodel3D *p_viewmodel) const;
+	int _get_viewmodel_count() const;
 
 	// String camera_group;
 

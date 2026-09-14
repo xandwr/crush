@@ -35,8 +35,48 @@
 #include "core/math/transform_interpolator.h"
 #include "core/object/callable_mp.h"
 #include "core/object/class_db.h"
+#include "scene/3d/viewmodel_3d.h"
 #include "scene/main/viewport.h"
 #include "servers/rendering/rendering_server.h"
+
+void Camera3D::_register_viewmodel(Viewmodel3D *p_viewmodel) {
+	const ObjectID viewmodel_id = p_viewmodel->get_instance_id();
+	if (!viewmodel_ids.has(viewmodel_id)) {
+		viewmodel_ids.push_back(viewmodel_id);
+	}
+	for (const ObjectID &id : viewmodel_ids) {
+		Viewmodel3D *viewmodel = ObjectDB::get_instance<Viewmodel3D>(id);
+		if (viewmodel) {
+			viewmodel->update_configuration_warnings();
+		}
+	}
+}
+
+void Camera3D::_unregister_viewmodel(Viewmodel3D *p_viewmodel) {
+	const ObjectID viewmodel_id = p_viewmodel->get_instance_id();
+	const bool was_owner = !viewmodel_ids.is_empty() && viewmodel_ids[0] == viewmodel_id;
+	viewmodel_ids.erase(viewmodel_id);
+	if (was_owner && !viewmodel_ids.is_empty()) {
+		Viewmodel3D *viewmodel = ObjectDB::get_instance<Viewmodel3D>(viewmodel_ids[0]);
+		if (viewmodel) {
+			viewmodel->_camera_ownership_changed();
+		}
+	}
+	for (const ObjectID &id : viewmodel_ids) {
+		Viewmodel3D *viewmodel = ObjectDB::get_instance<Viewmodel3D>(id);
+		if (viewmodel) {
+			viewmodel->update_configuration_warnings();
+		}
+	}
+}
+
+bool Camera3D::_is_viewmodel_owner(const Viewmodel3D *p_viewmodel) const {
+	return !viewmodel_ids.is_empty() && viewmodel_ids[0] == p_viewmodel->get_instance_id();
+}
+
+int Camera3D::_get_viewmodel_count() const {
+	return viewmodel_ids.size();
+}
 
 void Camera3D::_update_audio_listener_state() {
 }
