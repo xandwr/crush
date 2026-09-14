@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="Entity3D" inherits="Node3D" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../class.xsd">
+	<brief_description>
+		Places an entity scene using an EntityDefinition.
+	</brief_description>
+	<description>
+		Instantiates the scene referenced by [member definition] as an internal child when entering the scene tree, in both the editor and at runtime. The scene must have a [Node3D] root. Its authored local transform is preserved relative to this node.
+		The generated child is not saved with the placement. Loading the placement recreates it from the definition. Changes to the definition rebuild the child at the next idle opportunity, discarding its current state. Definitions used by an ancestor [Entity3D] are rejected to prevent recursive instantiation.
+	</description>
+	<tutorials>
+	</tutorials>
+	<members>
+		<member name="definition" type="EntityDefinition" setter="set_definition" getter="get_definition">
+			The definition whose [member EntityDefinition.scene] is instantiated. Clearing this property removes the generated child. Definitions without a scene create no child.
+		</member>
+	</members>
+</class>
