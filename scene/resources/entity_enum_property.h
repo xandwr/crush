@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  entity_definition.h                                                  */
+/*  entity_enum_property.h                                                  */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -30,28 +30,30 @@
 
 #pragma once
 
-#include "core/variant/typed_array.h"
-#include "scene/resources/entity_enum_property.h"
-#include "scene/resources/packed_scene.h"
+#include "core/io/resource.h"
+#include "core/variant/typed_dictionary.h"
 
-class EntityDefinition : public Resource {
-	GDCLASS(EntityDefinition, Resource);
+class EntityEnumProperty : public Resource {
+	GDCLASS(EntityEnumProperty, Resource);
 
-	TypedArray<EntityEnumProperty> enum_properties;
-	String classname;
+	String key;
+	String display_name;
 	String description;
-	Ref<PackedScene> scene;
+	int64_t default_value = 0;
+	TypedDictionary<String, int64_t> choices;
 
 protected:
 	static void _bind_methods();
 
 public:
-	void set_enum_properties(const TypedArray<EntityEnumProperty> &p_properties);
-	TypedArray<EntityEnumProperty> get_enum_properties() const;
-	void set_classname(const String &p_classname);
-	String get_classname() const;
+	void set_key(const String &p_key);
+	String get_key() const;
+	void set_display_name(const String &p_display_name);
+	String get_display_name() const;
 	void set_description(const String &p_description);
 	String get_description() const;
-	void set_scene(const Ref<PackedScene> &p_scene);
-	Ref<PackedScene> get_scene() const;
+	void set_default_value(const int64_t &p_default_value);
+	int64_t get_default_value() const;
+	void set_choices(const TypedDictionary<String, int64_t> &p_choices);
+	TypedDictionary<String, int64_t> get_choices() const;
 };

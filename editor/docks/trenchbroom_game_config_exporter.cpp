@@ -363,7 +363,37 @@ Dictionary TrenchBroomGameConfigExporter::export_game_config(const String &p_par
 			return failure(vformat("Entity scene must have a Node3D root: %s", path));
 		}
 		String half_size = String::num(units * 0.5);
-		fgd += "@PointClass size(-" + half_size + " -" + half_size + " -" + half_size + ", " + half_size + " " + half_size + " " + half_size + ") color(0.6 0.8 1) = " + classname + " : \"" + fgd_string(definition->get_description()) + "\"\n[\n]\n\n";
+		fgd += "@PointClass size(-" + half_size + " -" + half_size + " -" + half_size + ", " + half_size + " " + half_size + " " + half_size + ") color(0.6 0.8 1) = " + classname + " : \"" + fgd_string(definition->get_description()) + "\"\n[\n";
+		HashSet<String> property_keys;
+		for (const Ref<EntityEnumProperty> property : definition->get_enum_properties()) {
+			if (property.is_null()) {
+				return failure(vformat("Null enum property in entity definition: %s", path));
+			}
+			String key = property->get_key();
+			String normalized = key.to_lower();
+			if (!valid_classname(key) || property_keys.has(normalized) || normalized == "classname" || normalized == "origin" || normalized == "angle" || normalized == "angles" || normalized == "spawnflags") {
+				return failure(vformat("Invalid, reserved or duplicate enum property '%s' in %s", key, path));
+			}
+			property_keys.insert(normalized);
+			TypedDictionary<String, int64_t> choices = property->get_choices();
+			HashSet<int64_t> values;
+			String entries;
+			for (const Variant &label_variant : choices.keys()) {
+				String label = label_variant;
+				int64_t value = choices[label];
+				if (label.strip_edges().is_empty() || values.has(value)) {
+					return failure(vformat("Enum property '%s' requires nonempty labels and unique values in %s", key, path));
+				}
+				values.insert(value);
+				entries += "\t\t" + itos(value) + " : \"" + fgd_string(label) + "\"\n";
+			}
+			if (!values.has(property->get_default_value())) {
+				return failure(vformat("Enum property '%s' default must match a choice in %s", key, path));
+			}
+			String title = property->get_display_name().is_empty() ? key : property->get_display_name();
+			fgd += "\t" + key + "(choices) : \"" + fgd_string(title) + "\" : " + itos(property->get_default_value()) + " : \"" + fgd_string(property->get_description()) + "\" =\n\t[\n" + entries + "\t]\n";
+		}
+		fgd += "]\n\n";
 	}
 	Dictionary entities;
 	entities["definitions"] = PackedStringArray({ "Entities.fgd" });

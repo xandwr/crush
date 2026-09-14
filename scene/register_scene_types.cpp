@@ -1096,6 +1096,7 @@ void register_scene_types() {
 
 	GDREGISTER_ABSTRACT_CLASS(SceneState);
 	GDREGISTER_CLASS(PackedScene);
+	GDREGISTER_CLASS(EntityEnumProperty);
 	GDREGISTER_CLASS(EntityDefinition);
 
 	GDREGISTER_CLASS(SceneTree);

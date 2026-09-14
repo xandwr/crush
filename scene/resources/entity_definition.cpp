@@ -68,7 +68,19 @@ Ref<PackedScene> EntityDefinition::get_scene() const {
 	return scene;
 }
 
+void EntityDefinition::set_enum_properties(const TypedArray<EntityEnumProperty> &p_properties) {
+	enum_properties = p_properties.duplicate();
+	emit_changed();
+}
+
+TypedArray<EntityEnumProperty> EntityDefinition::get_enum_properties() const {
+	return enum_properties.duplicate();
+}
+
 void EntityDefinition::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("set_enum_properties", "properties"), &EntityDefinition::set_enum_properties);
+	ClassDB::bind_method(D_METHOD("get_enum_properties"), &EntityDefinition::get_enum_properties);
+	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "enum_properties", PROPERTY_HINT_ARRAY_TYPE, "EntityEnumProperty"), "set_enum_properties", "get_enum_properties");
 	ClassDB::bind_method(D_METHOD("set_classname", "classname"), &EntityDefinition::set_classname);
 	ClassDB::bind_method(D_METHOD("get_classname"), &EntityDefinition::get_classname);
 	ClassDB::bind_method(D_METHOD("set_description", "description"), &EntityDefinition::set_description);

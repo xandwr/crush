@@ -4,7 +4,7 @@
 		Reusable description of a scene-based map entity.
 	</brief_description>
 	<description>
-		Associates a stable map classname and description with a [PackedScene]. Save this resource and add its path to [member ProjectSettings.trenchbroom/general/entity_definitions] to configure it for future native TrenchBroom integration.
+		Associates a stable map classname and description with a [PackedScene]. Save this resource and add its path to [member ProjectSettings.trenchbroom/general/entity_definitions] to configure it for native TrenchBroom export.
 		This resource only stores the definition. It does not instantiate the scene, validate classnames, or export FGD files.
 	</description>
 	<tutorials>
@@ -15,6 +15,9 @@
 		</member>
 		<member name="description" type="String" setter="set_description" getter="get_description" default="&quot;&quot;">
 			Human-readable description intended for the map editor. May contain multiple lines.
+		</member>
+		<member name="enum_properties" type="EntityEnumProperty[]" setter="set_enum_properties" getter="get_enum_properties" default="[]">
+			Integer choice properties exposed in the generated FGD, in display order. These describe map editor fields and do not bind properties on instantiated scenes. Returned arrays are copies; assign the array back after editing.
 		</member>
 		<member name="scene" type="PackedScene" setter="set_scene" getter="get_scene">
 			Scene representing this entity. Assigning it stores a reference without instantiating it. Scene-based 3D entities should use a [Node3D]-derived root.

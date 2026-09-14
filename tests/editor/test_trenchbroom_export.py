@@ -70,6 +70,12 @@ func run() -> void:
 	definition.classname = "ent_test"
 	definition.description = "Quote \" / backslash \\ / newline\ntext"
 	definition.scene = scene
+	var team := EntityEnumProperty.new()
+	team.key = "team"
+	team.display_name = "Team"
+	team.description = "Team assigned to this spawnpoint."
+	team.choices = {"Unassigned": 0, "Good": 1, "Evil": 2, "Spectator": 3}
+	definition.enum_properties = [team]
 	check(ResourceSaver.save(definition, "res://entity.tres") == OK, "Definition saved")
 	ProjectSettings.set_setting("trenchbroom/general/entity_definitions", PackedStringArray(["res://entity.tres"]))
 	var result: Dictionary = exporter.export_game_config(export_root)
@@ -98,6 +104,29 @@ func run() -> void:
 	check(fgd.contains("@PointClass size(-16.0 -16.0 -16.0, 16.0 16.0 16.0)"), "Box uses map units")
 	check(fgd.contains("= ent_test :"), "Entity exported")
 	check(fgd.contains('Quote \\"'), "FGD quotes escaped")
+	check(fgd.contains('team(choices) : "Team" : 0 : "Team assigned to this spawnpoint."'), "Enum header and default exported")
+	check(fgd.contains('3 : "Spectator"'), "Enum labels and values exported")
+	definition = load("res://entity.tres")
+	team = definition.enum_properties[0]
+	var restored: EntityDefinition = ResourceLoader.load("res://entity.tres", "", ResourceLoader.CACHE_MODE_IGNORE)
+	check(restored.enum_properties[0].choices == team.choices, "Enum choices survive serialization")
+	check(restored.enum_properties[0].key == "team", "Enum key survives serialization")
+	for invalid_key in ["origin", "classname", "team)\n["]:
+		team.key = invalid_key
+		check(not exporter.export_game_config(export_root).success, "Invalid enum key rejected")
+	team.key = "team"
+	team.default_value = 99
+	check(not exporter.export_game_config(export_root).success, "Missing enum default rejected")
+	team.default_value = 0
+	team.choices = {"Unassigned": 0, "Duplicate": 0}
+	check(not exporter.export_game_config(export_root).success, "Duplicate enum value rejected")
+	team.choices = {"Unassigned": 0, "Good": 1, "Evil": 2, "Spectator": 3}
+	definition.enum_properties = [team, team]
+	check(not exporter.export_game_config(export_root).success, "Duplicate enum key rejected")
+	definition.enum_properties = [null]
+	check(not exporter.export_game_config(export_root).success, "Null enum rejected")
+	definition.enum_properties = [team]
+	check(FileAccess.get_file_as_string(directory.path_join("Entities.fgd")) == fgd, "Invalid enum preserves last exported FGD")
 	var before := FileAccess.get_file_as_string(directory.path_join("GameConfig.cfg"))
 	ProjectSettings.set_setting("trenchbroom/general/entity_definitions", PackedStringArray(["res://entity.tres", "res://entity.tres"]))
 	check(not exporter.export_game_config(export_root).success, "Duplicate classname rejected")

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="EntityEnumProperty" inherits="Resource" api_type="core" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../class.xsd">
+	<brief_description>Integer choice property for a map entity.</brief_description>
+	<description>Add this resource to [member EntityDefinition.enum_properties] to expose an integer dropdown in the generated TrenchBroom FGD. This is authoring metadata; it does not apply values to scene nodes. The exporter validates keys, choices, and defaults before replacing generated files.</description>
+	<tutorials>
+	</tutorials>
+	<members>
+		<member name="key" type="String" setter="set_key" getter="get_key" default="&quot;&quot;">Stable map property key. Use letters, digits, and underscores. Keys must be unique within an entity, ignoring case. The keys classname, origin, angle, angles, and spawnflags are reserved.</member>
+		<member name="display_name" type="String" setter="set_display_name" getter="get_display_name" default="&quot;&quot;">Name displayed in the map editor. Empty uses [member key].</member>
+		<member name="description" type="String" setter="set_description" getter="get_description" default="&quot;&quot;">Help text displayed in the map editor.</member>
+		<member name="default_value" type="int" setter="set_default_value" getter="get_default_value" default="0">Default integer value. Must match one of the choices.</member>
+		<member name="choices" type="Dictionary[String, int]" setter="set_choices" getter="get_choices" default="{}">Display labels mapped to integer values, in display order. Labels must be nonempty and values unique. Returned dictionaries are copies; assign the dictionary back after editing.</member>
+	</members>
+</class>
