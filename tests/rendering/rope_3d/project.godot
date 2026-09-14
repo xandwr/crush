@@ -1,0 +1,17 @@
+config_version=5
+
+[application]
+config/name="Rope3D acceptance"
+run/main_scene="res://main.tscn"
+
+[display]
+window/size/viewport_width=960
+window/size/viewport_height=640
+
+[physics]
+common/physics_ticks_per_second=256
+3d/physics_engine="Jolt Physics"
+
+[rendering]
+renderer/rendering_method="gl_compatibility"
+environment/defaults/default_clear_color=Color(0.06, 0.08, 0.12, 1)
