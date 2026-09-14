@@ -38,6 +38,7 @@
 #include "scene/gui/box_container.h"
 #include "scene/gui/button.h"
 #include "scene/gui/label.h"
+#include "scene/gui/scroll_container.h"
 
 void TrenchBroomDock::_refresh_destination() {
 	TrenchBroomGameConfigExporter exporter;
@@ -71,8 +72,12 @@ TrenchBroomDock::TrenchBroomDock() {
 	set_icon_name("Node3D");
 	set_default_slot(DOCK_SLOT_LEFT_BR);
 
+	ScrollContainer *scroll = memnew(ScrollContainer);
+	scroll->set_horizontal_scroll_mode(ScrollContainer::SCROLL_MODE_DISABLED);
+	add_child(scroll);
 	VBoxContainer *layout = memnew(VBoxContainer);
-	add_child(layout);
+	layout->set_h_size_flags(Control::SIZE_EXPAND_FILL);
+	scroll->add_child(layout);
 	Button *export_button = memnew(Button);
 	export_button->set_text(TTR("Export TrenchBroom Game Config"));
 	export_button->set_autowrap_mode(TextServer::AUTOWRAP_WORD_SMART);

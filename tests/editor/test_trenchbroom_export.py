@@ -33,6 +33,16 @@ func read_config(path: String) -> Dictionary:
 	return JSON.parse_string(FileAccess.get_file_as_string(path.path_join("GameConfig.cfg")))
 
 func run() -> void:
+	var startup_docks := EditorInterface.get_base_control().find_children("*", "TrenchBroomDock", true, false)
+	check(startup_docks.size() == 1, "TrenchBroom dock exists at startup")
+	var startup_dock: Control = startup_docks[0]
+	check(not startup_dock.is_visible_in_tree(), "Startup regression exercises an unselected dock")
+	var startup_minimum := startup_dock.get_combined_minimum_size()
+	check(startup_minimum.y < 200, "Hidden dock must not force a tall startup layout: " + str(startup_minimum))
+	startup_dock.make_visible()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	check(startup_dock.get_combined_minimum_size().y < 200, "Selecting the dock keeps its minimum height bounded")
 	var exporter = ClassDB.instantiate("TrenchBroomGameConfigExporter")
 	check(exporter != null, "Exporter is registered")
 	var export_root := ProjectSettings.globalize_path("res://exports")
