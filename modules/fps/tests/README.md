@@ -1,4 +1,4 @@
-# MovementHistory3D validation
+# FPS module validation
 
 Run the native class contract through the compiled engine's public bindings:
 
@@ -10,3 +10,15 @@ The contract checks independent little-endian byte fixtures, signed 64-bit IDs,
 packet bounds and flags, atomic rejection, ring wrap, snapshot isolation,
 interpolation, loss holding, teleport resets, and node disposal. No game project
 or autoloads are required. The module can be excluded with `module_fps_enabled=no`.
+
+## WeaponSimulation
+
+```powershell
+bin/godot.windows.editor.x86_64.console.exe --headless --path modules/fps/tests --script test_weapon_simulation.gd
+```
+
+Checks semi/automatic cadence, consecutive ticks, ammunition conservation,
+reload completion/cancellation, equip delay, switching cooldown, settings
+isolation, replay, malformed snapshots, and Resource save/reopen/duplication.
+Timing is rounded up to fixed ticks. Gameplay authority and presentation are
+outside this class. Replay returns events again; callers deduplicate effects.

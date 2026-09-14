@@ -31,12 +31,15 @@
 #include "register_types.h"
 
 #include "movement_history_3d.h"
+#include "weapon_simulation.h"
 
 #include "core/object/class_db.h"
 
 void initialize_fps_module(ModuleInitializationLevel p_level) {
 	if (p_level == MODULE_INITIALIZATION_LEVEL_SCENE) {
 		GDREGISTER_CLASS(MovementHistory3D);
+		GDREGISTER_CLASS(WeaponSimulationSettings);
+		GDREGISTER_CLASS(WeaponSimulation);
 	}
 }
 

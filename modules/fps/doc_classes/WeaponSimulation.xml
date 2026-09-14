@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="WeaponSimulation" inherits="RefCounted" api_type="core" version="4.7">
+	<brief_description>Explicitly stepped firearm ammunition and action state.</brief_description>
+	<description>One instance represents one owned firearm. It handles cadence, reload and equip timing with integer ticks, independent of nodes, rendering and physics. Configure at the fixed simulation tick rate. It does not aim, trace, apply damage, choose inventory, run RPCs or play effects. Runtime settings are copied; snapshots support reproducible local replay, not complete client prediction or authoritative validation.</description>
+	<tutorials></tutorials>
+	<methods>
+		<method name="configure">
+			<return type="bool" />
+			<param index="0" name="settings" type="WeaponSimulationSettings" />
+			<param index="1" name="tick_rate" type="int" />
+			<param index="2" name="magazine" type="int" default="-1" />
+			<param index="3" name="reserve" type="int" default="0" />
+			<description>Copies valid settings, rounds durations up at tick_rate (1 to 1000), and resets the runtime. Magazine -1 fills the magazine. Reserve must be 0 to 1000000. Returns false without changing state on invalid input.</description>
+		</method>
+		<method name="reset">
+			<return type="bool" />
+			<param index="0" name="magazine" type="int" default="-1" />
+			<param index="1" name="reserve" type="int" default="0" />
+			<description>Restores initial ammunition, tick -1, and holstered state without emitting events. Magazine -1 fills capacity. Returns false atomically if unconfigured or ammunition is invalid.</description>
+		</method>
+		<method name="set_equipped">
+			<return type="void" />
+			<param index="0" name="equipped" type="bool" />
+			<description>On a changed value, cancels reload without moving ammunition and starts the equip delay when equipping. Preserves cooldown and trigger latch. Repeated identical calls do nothing. Holstered weapons must still be stepped.</description>
+		</method>
+		<method name="step">
+			<return type="int" />
+			<param index="0" name="tick" type="int" />
+			<param index="1" name="trigger_held" type="bool" />
+			<param index="2" name="reload_requested" type="bool" default="false" />
+			<description>Processes exactly the next tick, starting at 0 after reset. Returns event flags, or -1 atomically for unconfigured, duplicate, skipped, negative or exhausted ticks. Step all owned weapons once per simulation tick, including holstered weapons. Cooldown and reload timers advance first. Reload completion may coincide with an automatic shot. Equip blocks the full configured number of steps. An eligible reload request takes priority over firing. Presses during cooldown, equip or reload are consumed; semi-auto has no buffered fire. Empty fire emits DRY_FIRE only on a fresh eligible press. Returned events are deterministic data: the caller deduplicates presentation when replaying.</description>
+		</method>
+		<method name="is_equipped" qualifiers="const">
+			<return type="bool" />
+			<description>Returns whether the weapon is equipped, including its equip delay.</description>
+		</method>
+		<method name="is_reloading" qualifiers="const">
+			<return type="bool" />
+			<description>Returns whether a reload is pending.</description>
+		</method>
+		<method name="get_magazine" qualifiers="const">
+			<return type="int" />
+			<description>Returns magazine ammunition.</description>
+		</method>
+		<method name="get_reserve" qualifiers="const">
+			<return type="int" />
+			<description>Returns reserve ammunition.</description>
+		</method>
+		<method name="get_last_tick" qualifiers="const">
+			<return type="int" />
+			<description>Returns the last accepted tick, or -1 after reset.</description>
+		</method>
+		<method name="get_snapshot" qualifiers="const">
+			<return type="Dictionary" />
+			<description>Returns an independent versioned state snapshot including configuration, tick, timers and trigger latch. Returns an empty dictionary before configuration. This is local simulation state, not a network authorization or packet format.</description>
+		</method>
+		<method name="restore_snapshot">
+			<return type="bool" />
+			<param index="0" name="snapshot" type="Dictionary" />
+			<description>Validates snapshot types, ranges and configuration before replacing state atomically. Requires a configured runtime with matching quantized settings and tick rate. Returns false without changes on failure. Restore produces no events. The game must validate ownership, generation and permitted rewind before accepting remote state.</description>
+		</method>
+	</methods>
+	<constants>
+		<constant name="NONE" value="0" enum="Event">No event.</constant>
+		<constant name="SHOT" value="1" enum="Event">One round consumed. The caller resolves the shot.</constant>
+		<constant name="DRY_FIRE" value="2" enum="Event">Fresh eligible press with an empty magazine.</constant>
+		<constant name="RELOAD_STARTED" value="4" enum="Event">Reload timer started; ammunition unchanged.</constant>
+		<constant name="RELOAD_COMPLETED" value="8" enum="Event">Available reserve transferred up to magazine capacity.</constant>
+	</constants>
+</class>
