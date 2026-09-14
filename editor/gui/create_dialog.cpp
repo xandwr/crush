@@ -981,6 +981,7 @@ CreateDialog::CreateDialog() {
 
 	type_blacklist.insert("MissingNode");
 	type_blacklist.insert("MissingResource");
+	type_blacklist.insert("ViewmodelMapCopy");
 
 	HSplitContainer *hsc = memnew(HSplitContainer);
 	add_child(hsc);
