@@ -3545,9 +3545,6 @@
 			Project directory intended to receive generated materials for the native TrenchBroom integration. An empty value leaves the output directory unconfigured.
 			[b]Note:[/b] This setting is reserved for future material generation. No materials are generated yet.
 		</member>
-		<member name="trenchbroom/general/test_checkbox" type="bool" setter="" getter="" default="false">
-			Placeholder checkbox for the native TrenchBroom project settings section. Has no effect on map importing or runtime behavior.
-		</member>
 		<member name="trenchbroom/general/texture_source_directories" type="PackedStringArray" setter="" getter="" default="PackedStringArray()">
 			Project directories containing textures intended for use in TrenchBroom. Add multiple directories to configure the sources for a combined texture catalog. An empty array leaves the texture sources unconfigured.
 			[b]Note:[/b] This setting is reserved for future texture discovery and export. No textures are scanned, merged, or exported yet.
