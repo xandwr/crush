@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="MovementHistory3D" inherits="Node" api_type="core" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+		Bounded movement sample history with interpolation and compact packet serialization.
+	</brief_description>
+	<description>
+		Stores up to 24 movement samples in native ring storage. Call [method push_sample] on an authority, [method to_packet] to serialize its history, and [method push_packet] on replicas. Call [method advance] explicitly to obtain a delayed interpolated snapshot. This node does not process automatically, move another node, send RPCs, or enforce connection ownership. It works outside the scene tree; like any [Node], it must be parented or freed by its caller.
+		Samples contain [code]time[/code] (nonnegative finite float seconds), [code]position[/code] and [code]velocity[/code] (finite Vector3), [code]yaw[/code] (finite float radians), [code]ack[/code] (nonnegative signed 64-bit int), [code]epoch[/code] (0 through 2147483647), [code]gait_phase[/code] (float in [code][0, 1)[/code]), and Boolean [code]gait_advancing[/code], [code]grounded[/code], [code]crouching[/code], and optional [code]jumping[/code] (defaults false). Positions must be within 1000000 units of the origin. Velocity and yaw must fit finite 32-bit floats. Extra dictionary keys are ignored. Returned dictionaries are independent snapshots.
+		Batches must contain strictly increasing times. A batch whose newest time is not newer than the stored history is rejected. Overlapping older samples are skipped. When the newest sample's epoch changes, the stored history and playback cursor reset, and only samples matching that epoch are retained. Epoch values are not an authorization mechanism: validate session, owner, generation and reset policy before ingestion.
+		The wire format is little-endian with no envelope or version header. Each 54-byte sample contains float64 time; float32 position XYZ, velocity XYZ and yaw; int64 ack; int32 epoch; float32 gait phase; one byte for gait advancement; and one flags byte (grounded bit 0, crouching bit 1, jumping bit 2). Gait values which round to 1.0 are clamped to the largest float32 below 1.0. Commands use 29 bytes: int64 sequence and jump ID, float32 movement XY and yaw, and one flags byte (jump, crouch, sprint and slow in bits 0 through 3). Commands require increasing positive sequence numbers, nondecreasing nonnegative jump IDs no greater than sequence, finite movement of length at most 1.001, and finite yaw within PI plus 0.000001 radians. Transport framing and protocol negotiation belong to the caller.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="advance">
+			<return type="Dictionary" />
+			<param index="0" name="delta" type="float" />
+			<description>Advances the playback cursor by nonnegative finite seconds. Playback speed adjusts between 0.9 and 1.1 to follow [member render_delay]. Holds the newest sample on packet loss, never extrapolating. Returns an empty dictionary for invalid delta or empty history without advancing.</description>
+		</method>
+		<method name="clear">
+			<return type="void" />
+			<description>Clears samples and resets the playback cursor. Preserves [member render_delay].</description>
+		</method>
+		<method name="decode_commands" qualifiers="static">
+			<return type="Array" />
+			<param index="0" name="packet" type="PackedByteArray" />
+			<description>Decodes and validates up to 8 commands. Returns an empty array for malformed length, invalid fields, unknown flags or invalid ordering.</description>
+		</method>
+		<method name="decode_samples" qualifiers="static">
+			<return type="Array" />
+			<param index="0" name="packet" type="PackedByteArray" />
+			<description>Decodes up to 24 ordered samples to independent dictionaries, preserving mixed epochs. Returns an empty array if any sample is invalid. Prefer [method push_packet] for playback to avoid intermediate dictionaries.</description>
+		</method>
+		<method name="encode_commands" qualifiers="static">
+			<return type="PackedByteArray" />
+			<param index="0" name="commands" type="Array" />
+			<description>Validates and encodes 1 to 8 command dictionaries. Keys are sequence, jump_id, movement, yaw, jump, crouch, sprint and slow. Returns an empty packet if any entry is invalid.</description>
+		</method>
+		<method name="encode_samples" qualifiers="static">
+			<return type="PackedByteArray" />
+			<param index="0" name="samples" type="Array" />
+			<description>Validates and encodes 1 to 24 ordered sample dictionaries without filtering epochs. Returns an empty packet if any entry is invalid. Prefer [method to_packet] for stored history.</description>
+		</method>
+		<method name="get_latest_sample" qualifiers="const">
+			<return type="Dictionary" />
+			<description>Returns an independent newest sample snapshot, or an empty dictionary.</description>
+		</method>
+		<method name="get_sample_count" qualifiers="const">
+			<return type="int" />
+			<description>Returns the number of stored samples, between 0 and 24.</description>
+		</method>
+		<method name="push_packet">
+			<return type="bool" />
+			<param index="0" name="packet" type="PackedByteArray" />
+			<description>Decodes directly into native samples and ingests them atomically. Returns false without mutation for invalid or stale input.</description>
+		</method>
+		<method name="push_sample">
+			<return type="bool" />
+			<param index="0" name="sample" type="Dictionary" />
+			<description>Validates and appends a single sample, evicting the oldest if full. Returns false without mutation for invalid or stale input.</description>
+		</method>
+		<method name="push_samples">
+			<return type="bool" />
+			<param index="0" name="samples" type="Array" />
+			<description>Validates and ingests 1 to 24 ordered sample dictionaries atomically. Returns false without mutation for invalid or stale input.</description>
+		</method>
+		<method name="sample_at" qualifiers="const">
+			<return type="Dictionary" />
+			<param index="0" name="time" type="float" />
+			<description>Samples without changing the playback cursor. Position and velocity interpolate linearly; yaw and gait phase use shortest wraps. Inside an interval, metadata and discrete flags hold the left sample, except gait_advancing selects the right value at the interval endpoint. Times outside history hold the first or last complete sample. Returns an empty dictionary for nonfinite time or empty history.</description>
+		</method>
+		<method name="to_packet" qualifiers="const">
+			<return type="PackedByteArray" />
+			<description>Serializes stored samples chronologically, directly from native storage. Returns an empty packet for empty history. A full packet is 1296 bytes before transport overhead.</description>
+		</method>
+	</methods>
+	<members>
+		<member name="render_delay" type="float" setter="set_render_delay" getter="get_render_delay" default="0.1">Target playback delay in seconds. Must be finite and nonnegative. Available history bounds the effective delay. Changing it adjusts playback speed without clearing history.</member>
+	</members>
+	<constants>
+		<constant name="HISTORY_SIZE" value="24">Maximum stored samples and samples per packet.</constant>
+		<constant name="COMMAND_LIMIT" value="8">Maximum commands per packet.</constant>
+		<constant name="COMMAND_BYTES" value="29">Bytes per command.</constant>
+		<constant name="SAMPLE_BYTES" value="54">Bytes per sample.</constant>
+	</constants>
+</class>

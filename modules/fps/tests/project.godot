@@ -1,0 +1,7 @@
+config_version=5
+
+[application]
+config/name="MovementHistory3D contracts"
+
+[rendering]
+renderer/rendering_method="gl_compatibility"
