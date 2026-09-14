@@ -1765,6 +1765,32 @@ ProjectSettings::ProjectSettings() {
 	GLOBAL_DEF_BASIC(PropertyInfo(Variant::PACKED_STRING_ARRAY, "trenchbroom/general/texture_source_directories", PROPERTY_HINT_TYPE_STRING, vformat("%d/%d:", Variant::STRING, PROPERTY_HINT_DIR)), PackedStringArray());
 	GLOBAL_DEF_BASIC(PropertyInfo(Variant::STRING, "trenchbroom/general/materials_output_directory", PROPERTY_HINT_DIR), "");
 	GLOBAL_DEF_BASIC(PropertyInfo(Variant::PACKED_STRING_ARRAY, "trenchbroom/general/entity_definitions", PROPERTY_HINT_TYPE_STRING, vformat("%d/%d:*.tres,*.res", Variant::STRING, PROPERTY_HINT_FILE)), PackedStringArray());
+	GLOBAL_DEF_BASIC("trenchbroom/general/game_name", "");
+	GLOBAL_DEF_BASIC(PropertyInfo(Variant::STRING, "trenchbroom/general/icon", PROPERTY_HINT_FILE, "*.png,*.svg,*.webp,*.jpg"), "");
+	Array trenchbroom_formats;
+	for (const char *format : { "Valve", "Standard", "Quake2", "Quake3" }) {
+		Dictionary entry;
+		entry["format"] = format;
+		entry["initial_map"] = "";
+		trenchbroom_formats.push_back(entry);
+	}
+	GLOBAL_DEF_BASIC(PropertyInfo(Variant::ARRAY, "trenchbroom/map_formats/formats", PROPERTY_HINT_NONE, "trenchbroom_map_formats"), trenchbroom_formats);
+	GLOBAL_DEF_BASIC("trenchbroom/textures/exclusion_patterns", PackedStringArray({ "*_albedo", "*_ao", "*_emission", "*_height", "*_metallic", "*_normal", "*_orm", "*_roughness", "*_sss" }));
+	GLOBAL_DEF_BASIC(PropertyInfo(Variant::STRING, "trenchbroom/textures/palette", PROPERTY_HINT_FILE, "*.lmp,*.pal,*.pcx"), "");
+	GLOBAL_DEF_BASIC(PropertyInfo(Variant::FLOAT, "trenchbroom/entities/map_units_per_meter", PROPERTY_HINT_RANGE, "0.001,1024,0.001,or_greater"), 32.0);
+	GLOBAL_DEF_BASIC(PropertyInfo(Variant::ARRAY, "trenchbroom/tags/brush_tags", PROPERTY_HINT_NONE, "trenchbroom_brush_tags"), Array());
+	Array trenchbroom_face_tags;
+	for (const char *name : { "Clip", "Skip", "Origin" }) {
+		Dictionary tag;
+		tag["name"] = name;
+		tag["pattern"] = String(name).to_lower();
+		tag["transparent"] = true;
+		trenchbroom_face_tags.push_back(tag);
+	}
+	GLOBAL_DEF_BASIC(PropertyInfo(Variant::ARRAY, "trenchbroom/tags/face_tags", PROPERTY_HINT_NONE, "trenchbroom_face_tags"), trenchbroom_face_tags);
+	GLOBAL_DEF_BASIC("trenchbroom/face_attributes/default_uv_scale", Vector2(1, 1));
+	GLOBAL_DEF_BASIC(PropertyInfo(Variant::INT, "trenchbroom/compatibility/game_config_version", PROPERTY_HINT_ENUM, "Latest:0,Version 4:4,Version 8:8,Version 9:9"), 0);
+
 
 	// Keep the enum values in sync with the `DisplayServerEnums::ScreenOrientation` enum.
 	custom_prop_info["display/window/handheld/orientation"] = PropertyInfo(Variant::INT, "display/window/handheld/orientation", PROPERTY_HINT_ENUM, "Landscape,Portrait,Reverse Landscape,Reverse Portrait,Sensor Landscape,Sensor Portrait,Sensor");

@@ -42,6 +42,7 @@
 #include "editor/debugger/debug_adapter/debug_adapter_server.h"
 #include "editor/debugger/editor_debugger_plugin.h"
 #include "editor/docks/filesystem_dock.h"
+#include "editor/docks/trenchbroom_game_config_exporter.h"
 #include "editor/editor_interface.h"
 #include "editor/editor_node.h"
 #include "editor/editor_string_names.h"
@@ -158,6 +159,7 @@ void register_editor_types() {
 	GDREGISTER_CLASS(EditorImportPlugin);
 	GDREGISTER_CLASS(EditorScript);
 	GDREGISTER_CLASS(EditorDock);
+	GDREGISTER_CLASS(TrenchBroomGameConfigExporter);
 	GDREGISTER_CLASS(EditorSelection);
 	GDREGISTER_CLASS(EditorFileDialog);
 	GDREGISTER_VIRTUAL_CLASS(EditorSettings);

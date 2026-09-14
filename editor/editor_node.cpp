@@ -61,6 +61,8 @@
 #include "editor/docks/filesystem_dock.h"
 #include "editor/docks/groups_dock.h"
 #include "editor/docks/history_dock.h"
+#include "editor/docks/trenchbroom_dock.h"
+#include "editor/docks/trenchbroom_settings_inspector.h"
 #include "editor/docks/import_dock.h"
 #include "editor/docks/inspector_dock.h"
 #include "editor/docks/scene_tree_dock.h"
@@ -8614,6 +8616,10 @@ EditorNode::EditorNode() {
 		Ref<EditorInspectorParticleProcessMaterialPlugin> ppm;
 		ppm.instantiate();
 		EditorInspector::add_inspector_plugin(ppm);
+
+		Ref<TrenchBroomSettingsInspector> trenchbroom_inspector;
+		trenchbroom_inspector.instantiate();
+		EditorInspector::add_inspector_plugin(trenchbroom_inspector);
 	}
 
 	editor_selection = memnew(EditorSelection);
@@ -9188,6 +9194,8 @@ EditorNode::EditorNode() {
 
 	history_dock = memnew(HistoryDock);
 	editor_dock_manager->add_dock(history_dock);
+	TrenchBroomDock *trenchbroom_dock = memnew(TrenchBroomDock);
+	editor_dock_manager->add_dock(trenchbroom_dock);
 
 	// Add some offsets to make LEFT_R and RIGHT_L docks wider than minsize.
 	const int dock_hsize = 280;
@@ -9209,7 +9217,7 @@ EditorNode::EditorNode() {
 	{
 		const String filesystem_key = filesystem_dock->get_effective_layout_key();
 		const String history_key = history_dock->get_effective_layout_key();
-		default_layout->set_value(docks_section, "dock_4", vformat("%s,%s", filesystem_key, history_key));
+		default_layout->set_value(docks_section, "dock_4", vformat("%s,%s,%s", filesystem_key, history_key, trenchbroom_dock->get_effective_layout_key()));
 		default_layout->set_value(docks_section, "dock_4_selected_tab_idx", 0);
 	}
 	{

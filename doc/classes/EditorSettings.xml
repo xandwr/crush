@@ -848,7 +848,8 @@
 			Path to the TrenchBroom executable on this machine. Reserved for native TrenchBroom integration; currently stores the path without launching the program.
 		</member>
 		<member name="filesystem/external_programs/trenchbroom/game_config_export_directory" type="String" setter="" getter="">
-			Directory intended to contain this game's generated [code]GameConfig.cfg[/code] and accompanying files. Reserved for native TrenchBroom integration; currently stores the path without exporting files.
+			Parent game-definition directory used by the TrenchBroom dock's export action, usually TrenchBroom's user [code]games[/code] directory. Export creates a dedicated project subdirectory containing [code]GameConfig.cfg[/code], the FGD, and copied assets. Its name includes a project-path hash to separate projects.
+			The generated subdirectory is replaced on re-export; do not store hand-authored files or maps inside it. Existing directories without this project's ownership marker are not overwritten. Set TrenchBroom's Game Path to the generated directory shown in the dock.
 		</member>
 		<member name="filesystem/external_programs/vector_image_editor" type="String" setter="" getter="">
 			The program that opens vector image files when clicking "Open in External Program" option in Filesystem Dock. If not specified, the file will be opened in the system's default program.

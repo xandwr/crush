@@ -3541,17 +3541,51 @@
 		<member name="threading/worker_pool/max_threads" type="int" setter="" getter="" default="-1">
 			Maximum number of threads to be used by [WorkerThreadPool]. On Web, a value of [code]-1[/code] means [code]1[/code]. On other platforms, it means all [i]logical[/i] CPU cores available (see [method OS.get_processor_count]).
 		</member>
+		<member name="trenchbroom/compatibility/game_config_version" type="int" setter="" getter="" default="0">
+			Game configuration schema to export. [code]0[/code] uses the latest supported schema, currently version 9. Versions 4 and 8 target older TrenchBroom releases; current TrenchBroom requires version 9.
+		</member>
+		<member name="trenchbroom/entities/map_units_per_meter" type="float" setter="" getter="" default="32.0">
+			Number of TrenchBroom map units representing one Godot meter. Sets the generated point-entity box size to one meter and the default entity model scale. Must be positive and finite. This does not rescale existing maps or scenes.
+		</member>
+		<member name="trenchbroom/face_attributes/default_uv_scale" type="Vector2" setter="" getter="" default="Vector2(1, 1)">
+			Default texture scale for new faces and UV resets in TrenchBroom. Both components must be finite and nonzero.
+		</member>
 		<member name="trenchbroom/general/entity_definitions" type="PackedStringArray" setter="" getter="" default="PackedStringArray()">
-			Project resource paths to [EntityDefinition] files intended to make entities available in TrenchBroom. Each entry should reference a saved definition resource, rather than its entity scene.
-			[b]Note:[/b] This list is reserved for future entity registration and FGD export. It does not instantiate scenes or export definitions yet.
+			Project paths to saved [EntityDefinition] resources exported by the TrenchBroom dock into a generated FGD. Definitions must have unique classnames containing only letters, digits, and underscores, and reference a scene with a [Node3D] root. [code]worldspawn[/code] is reserved.
+			Entities appear as boxes in TrenchBroom. Scene models, custom properties, and map importing are not exported by this action.
+		</member>
+		<member name="trenchbroom/general/game_name" type="String" setter="" getter="" default="&quot;&quot;">
+			Name shown in TrenchBroom's game list. If empty, uses [member application/config/name]. Use a distinct name if another installed game configuration already uses the project's name.
+		</member>
+		<member name="trenchbroom/general/icon" type="String" setter="" getter="" default="&quot;&quot;">
+			Optional project image for the TrenchBroom game icon. If empty, uses [member application/config/icon]. Export converts the image to a 32 by 32 PNG. If both paths are empty, no icon is exported.
 		</member>
 		<member name="trenchbroom/general/materials_output_directory" type="String" setter="" getter="" default="&quot;&quot;">
-			Project directory intended to receive generated materials for the native TrenchBroom integration. An empty value leaves the output directory unconfigured.
-			[b]Note:[/b] This setting is reserved for future material generation. No materials are generated yet.
+			Project directory intended to receive generated Godot materials. An empty value leaves the output directory unconfigured.
+			[b]Note:[/b] This setting is reserved for future material generation. Exporting the TrenchBroom configuration does not generate Godot materials.
 		</member>
 		<member name="trenchbroom/general/texture_source_directories" type="PackedStringArray" setter="" getter="" default="PackedStringArray()">
-			Project directories containing textures intended for use in TrenchBroom. Add multiple directories to configure the sources for a combined texture catalog. An empty array leaves the texture sources unconfigured.
-			[b]Note:[/b] This setting is reserved for future texture discovery and export. No textures are scanned, merged, or exported yet.
+			Project directories whose images are copied into the exported TrenchBroom texture catalog. Relative subfolders are preserved and merged. Duplicate material names, ignoring case and file extension, fail export rather than silently overwrite a texture. Hidden subdirectories are skipped, and linked subdirectories are rejected.
+			Supported image extensions are BMP, EXR, HDR, JPEG, JPG, PNG, TGA, and WebP. Re-export after changing source textures. Set TrenchBroom's Game Path to the generated game directory shown in the dock.
+		</member>
+		<member name="trenchbroom/map_formats/formats" type="Array" setter="" getter="">
+			Ordered list of dictionaries with a [code]format[/code] string and optional [code]initial_map[/code] project file path. Supported choices are Valve, Standard, Quake2, and Quake3. Defaults to these four formats with no starter maps. The editor provides dropdowns, map file pickers, and reordering buttons.
+			An initial map is copied into the game definition directory during export. It must already use the selected format; the exporter does not convert maps. These options control TrenchBroom's new-map dialog and do not establish Godot map-import support.
+		</member>
+		<member name="trenchbroom/tags/brush_tags" type="Array" setter="" getter="" default="[]">
+			Brush-entity tags for TrenchBroom. Each dictionary contains [code]name[/code], a classname matching [code]pattern[/code], a [code]transparent[/code] boolean, and an optional [code]material[/code] string used when applying the tag. Defaults to an empty list. Tag names must be unique within this list.
+			Tags affect TrenchBroom appearance and editing commands, not Godot gameplay.
+		</member>
+		<member name="trenchbroom/tags/face_tags" type="Array" setter="" getter="">
+			Brush-face tags for TrenchBroom. Each dictionary contains [code]name[/code], a material matching [code]pattern[/code], and a [code]transparent[/code] boolean. Defaults to Clip, Skip, and Origin, matching [code]clip[/code], [code]skip[/code], and [code]origin[/code], with transparency enabled. Tag names must be unique within this list.
+			Tags affect TrenchBroom appearance and editing commands, not Godot gameplay.
+		</member>
+		<member name="trenchbroom/textures/exclusion_patterns" type="PackedStringArray" setter="" getter="">
+			Patterns for hiding material names from TrenchBroom's texture browser. Defaults to [code]*_albedo[/code], [code]*_ao[/code], [code]*_emission[/code], [code]*_height[/code], [code]*_metallic[/code], [code]*_normal[/code], [code]*_orm[/code], [code]*_roughness[/code], and [code]*_sss[/code]. Remove [code]*_albedo[/code] if those images should be directly selectable for mapping.
+			Patterns are passed to TrenchBroom and do not prevent source images from being copied or used by future Godot material generation.
+		</member>
+		<member name="trenchbroom/textures/palette" type="String" setter="" getter="" default="&quot;&quot;">
+			Optional project palette file copied into the exported game directory. Empty by default, which omits the palette reference entirely. Loose image textures do not require a palette.
 		</member>
 		<member name="xr/openxr/binding_modifiers/analog_threshold" type="bool" setter="" getter="" default="false">
 			If [code]true[/code], enables the analog threshold binding modifier if supported by the XR runtime.
