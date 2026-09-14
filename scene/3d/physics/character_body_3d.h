@@ -169,7 +169,6 @@ private:
 
 	Ref<KinematicCollision3D> _get_slide_collision(int p_bounce);
 	Ref<KinematicCollision3D> _get_last_slide_collision();
-	const Vector3 &get_up_direction() const;
 	bool _on_floor_if_snapped(bool p_was_on_floor, bool p_vel_dir_facing_up);
 	void set_up_direction(const Vector3 &p_up_direction);
 	void _set_collision_direction(const PhysicsServer3D::MotionResult &p_result, CollisionState &r_state, CollisionState p_apply_state = CollisionState(true, true, true));
@@ -177,6 +176,9 @@ private:
 	void _snap_on_floor(bool p_was_on_floor, bool p_vel_dir_facing_up);
 
 protected:
+	const Vector3 &get_up_direction() const;
+	bool move_and_slide_with_delta(double p_delta);
+	void update_motion_origin(const Vector3 &p_origin, double p_delta);
 	void _notification(int p_what);
 	static void _bind_methods();
 	void _validate_property(PropertyInfo &p_property) const;

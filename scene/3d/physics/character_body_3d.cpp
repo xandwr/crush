@@ -43,7 +43,15 @@
 bool CharacterBody3D::move_and_slide() {
 	// Hack in order to work with calling from _process as well as from _physics_process; calling from thread is risky
 	double delta = Engine::get_singleton()->is_in_physics_frame() ? get_physics_process_delta_time() : get_process_delta_time();
+	return move_and_slide_with_delta(delta);
+}
 
+void CharacterBody3D::update_motion_origin(const Vector3 &p_origin, double p_delta) {
+	previous_position = p_origin;
+	real_velocity = get_position_delta() / p_delta;
+}
+
+bool CharacterBody3D::move_and_slide_with_delta(double delta) {
 	for (int i = 0; i < 3; i++) {
 		if (locked_axis & (1 << i)) {
 			velocity[i] = 0.0;

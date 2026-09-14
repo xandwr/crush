@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="MovementSettings" inherits="Resource" api_type="core" version="4.7">
+	<brief_description>Physical movement and stance tuning for CharacterMotor3D.</brief_description>
+	<description>Values are read live by [CharacterMotor3D]. Invalid authoring values are retained and reported by [method validation_errors]. All values must be finite and nonnegative. Heights must be positive. Presentation and input settings belong to the project.</description>
+	<tutorials></tutorials>
+	<methods>
+		<method name="validation_errors" qualifiers="const"><return type="PackedStringArray" /><description>Returns configuration errors, or an empty array when valid.</description></method>
+	</methods>
+	<members>
+		<member name="gravity_acceleration" type="float" setter="set_gravity_acceleration" getter="get_gravity_acceleration" default="24.0">Downward acceleration in world units per second squared.</member>
+		<member name="jump_impulse" type="float" setter="set_jump_impulse" getter="get_jump_impulse" default="6.5">Upward speed applied on an accepted grounded jump.</member>
+		<member name="base_wish_speed" type="float" setter="set_base_wish_speed" getter="get_base_wish_speed" default="3.6">Normal horizontal target speed in world units per second.</member>
+		<member name="sprint_wish_speed" type="float" setter="set_sprint_wish_speed" getter="get_sprint_wish_speed" default="6.0">Horizontal target speed when sprinting and not crouching or slow walking.</member>
+		<member name="slow_walk_speed_multiplier" type="float" setter="set_slow_walk_speed_multiplier" getter="get_slow_walk_speed_multiplier" default="0.5">Multiplier on normal speed for slow walking. Between zero and one.</member>
+		<member name="ground_acceleration_rate" type="float" setter="set_ground_acceleration_rate" getter="get_ground_acceleration_rate" default="16.0">Ground acceleration coefficient, multiplied by wish speed and elapsed seconds.</member>
+		<member name="ground_friction_rate" type="float" setter="set_ground_friction_rate" getter="get_ground_friction_rate" default="7.5">Ground friction coefficient per second.</member>
+		<member name="ground_stop_speed" type="float" setter="set_ground_stop_speed" getter="get_ground_stop_speed" default="1.1">Minimum speed used to calculate ground friction.</member>
+		<member name="air_acceleration_rate" type="float" setter="set_air_acceleration_rate" getter="get_air_acceleration_rate" default="12.0">Air acceleration coefficient. Uses uncapped wish speed for acceleration and caps the directional target with air_wish_speed_cap.</member>
+		<member name="air_wish_speed_cap" type="float" setter="set_air_wish_speed_cap" getter="get_air_wish_speed_cap" default="0.6">Maximum target velocity component along the air wish direction. Does not cap total horizontal speed.</member>
+		<member name="standing_height" type="float" setter="set_standing_height" getter="get_standing_height" default="1.8">Total standing height measured from the feet. The project maps this onto its collision shapes.</member>
+		<member name="crouching_height" type="float" setter="set_crouching_height" getter="get_crouching_height" default="1.15">Total crouching height. Must be positive and no greater than standing height.</member>
+		<member name="crouch_speed_multiplier" type="float" setter="set_crouch_speed_multiplier" getter="get_crouch_speed_multiplier" default="0.5">Ground crouch speed multiplier, between zero and one.</member>
+		<member name="step_height" type="float" setter="set_step_height" getter="get_step_height" default="0.3">Maximum automatic upward step distance. Zero disables stepping. Requires a walkable landing at the candidate endpoint.</member>
+		<member name="ground_snap_distance" type="float" setter="set_ground_snap_distance" getter="get_ground_snap_distance" default="0.3">Maximum downward floor attachment distance. Grounded movement uses this to follow descending steps; jumping releases attachment.</member>
+	</members>
+</class>

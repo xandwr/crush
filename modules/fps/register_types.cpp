@@ -30,6 +30,7 @@
 
 #include "register_types.h"
 
+#include "character_motor_3d.h"
 #include "hitscan_3d.h"
 #include "movement_history_3d.h"
 #include "weapon_simulation.h"
@@ -38,6 +39,8 @@
 
 void initialize_fps_module(ModuleInitializationLevel p_level) {
 	if (p_level == MODULE_INITIALIZATION_LEVEL_SCENE) {
+		GDREGISTER_CLASS(MovementSettings);
+		GDREGISTER_CLASS(CharacterMotor3D);
 		GDREGISTER_CLASS(HitscanSettings);
 		GDREGISTER_CLASS(Hitscan3D);
 		GDREGISTER_CLASS(MovementHistory3D);

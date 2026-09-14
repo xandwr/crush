@@ -34,3 +34,15 @@ origins, concave faces, back faces, finite range, miss sentinels, invalid querie
 linear falloff boundaries, and Resource duplication/save/reopen. Face indices are
 compared with the active backend's raw physics query, not render mesh indices.
 Run with either Godot Physics or Jolt Physics selected in the test project.
+
+## CharacterMotor3D
+
+```powershell
+bin/godot.windows.editor.x86_64.console.exe --headless --path modules/fps/tests --script test_character_motor_3d.gd
+```
+
+Checks movement settings, invalid-step rejection, stair ascent/descent, tall obstacles,
+jump release from floor attachment, stance clearance, and airborne crouch transitions.
+The fixture uses a flat-bottom hull and runs on Godot Physics and Jolt. The project
+supplies collision geometry and a synchronous clearance callback; the motor owns
+stance decisions. Rounded hulls require a walkable contact at the candidate landing.

@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="CharacterMotor3D" inherits="CharacterBody3D" api_type="core" version="4.7">
+	<brief_description>Explicit character movement with directional air acceleration, stairs and height-based stance.</brief_description>
+	<description>Uses the attached collision shapes and Godot physics for movement. The project owns input, authority, networking, collision-shape layout and presentation. Configure [member settings], install a clearance callback and synchronously apply stance geometry through [signal stance_changed]. Does not promise deterministic collision replay across physics backends. Step candidates must have headroom and a walkable landing and make more horizontal progress than ordinary sliding. Rounded feet may not provide a walkable contact at a stair edge; a flat foot shape provides predictable stair support.</description>
+	<tutorials></tutorials>
+	<methods>
+		<method name="step"><return type="bool" />
+			<param index="0" name="delta" type="float" />
+			<param index="1" name="input" type="Vector2" />
+			<param index="2" name="view_basis" type="Basis" />
+			<param index="3" name="jump" type="bool" default="false" />
+			<param index="4" name="crouch" type="bool" default="false" />
+			<param index="5" name="sprint" type="bool" default="false" />
+			<param index="6" name="slow" type="bool" default="false" />
+			<description>Runs one explicit movement step in a safe physics query window. Does not process input or automatically advance. Applies ground friction before jumping, directional acceleration, gravity while airborne, collision movement, stepping, floor attachment and stance requests. Delta is in seconds and must be finite and positive. Invalid input or settings returns false without advancing. Supply jump edges in the caller if held jumping is unwanted. Releasing crouch retries standing before and after movement. Air crouch preserves head height through a swept upward tuck; blocked tucks are retried. Physical movement is immediate; camera smoothing belongs to the project.</description>
+		</method>
+		<method name="set_clearance_test"><return type="void" />
+			<param index="0" name="test" type="Callable" />
+			<description>Sets a synchronous callback taking target total height and target global Transform3D and returning bool. It must test the proposed project collision geometry against the world without mutating the motor, excluding the motor itself and tolerating mere contact within its safe margin. A missing callback rejects stance changes. An invalid or non-boolean result rejects standing expansion and airborne tuck. Crouch contraction is accepted without querying, allowing recovery when already overlapping geometry. The crouching geometry must be contained within the standing geometry at the same feet position. Connect stance_changed to synchronously apply the corresponding geometry before movement resumes.</description>
+		</method>
+		<method name="get_clearance_test"><return type="Callable" />
+			<description>Returns the installed stance clearance callback.</description>
+		</method>
+		<method name="is_crouching"><return type="bool" />
+			<description>Returns the resolved stance, which may differ from requested crouch input under an obstruction.</description>
+		</method>
+		<method name="get_stance_height"><return type="float" />
+			<description>Returns current total height from settings, or zero without settings.</description>
+		</method>
+		<method name="has_jumped"><return type="bool" />
+			<description>Whether the last successful step accepted a grounded jump.</description>
+		</method>
+		<method name="has_landed"><return type="bool" />
+			<description>Whether the last successful step changed from airborne to grounded.</description>
+		</method>
+		<method name="get_displacement"><return type="Vector3" />
+			<description>Total displacement during the last successful step, including stairs and airborne tuck.</description>
+		</method>
+		<method name="get_step_height"><return type="float" />
+			<description>Upward stair displacement accepted during the last step, or zero.</description>
+		</method>
+		<method name="reset_stance"><return type="void" />
+			<param index="0" name="crouching" type="bool" default="false" />
+			<description>Resets stance and motor result fields without clearance checks. Intended for spawn, teleport and trusted replica restoration. Emits stance_changed. Does not move the body, clear inherited CharacterBody3D contact state or reset velocity.</description>
+		</method>
+		<method name="integrate_gravity"><return type="Vector3" />
+			<param index="0" name="velocity" type="Vector3" />
+			<param index="1" name="up" type="Vector3" />
+			<param index="2" name="delta" type="float" />
+			<description>Calculates gravity without moving the body. Up must be finite and nonzero; delta must be finite and nonnegative.</description>
+		</method>
+		<method name="apply_jump"><return type="Vector3" />
+			<param index="0" name="velocity" type="Vector3" />
+			<param index="1" name="up" type="Vector3" />
+			<description>Replaces the up-axis velocity with the configured jump impulse without moving the body.</description>
+		</method>
+		<method name="integrate_lateral_movement"><return type="Vector3" />
+			<param index="0" name="velocity" type="Vector3" />
+			<param index="1" name="input" type="Vector2" />
+			<param index="2" name="view_basis" type="Basis" />
+			<param index="3" name="up" type="Vector3" />
+			<param index="4" name="grounded" type="bool" />
+			<param index="5" name="delta" type="float" />
+			<param index="6" name="speed_multiplier" type="float" default="1.0" />
+			<param index="7" name="sprinting" type="bool" default="false" />
+			<param index="8" name="slow_walking" type="bool" default="false" />
+			<param index="9" name="floor_normal" type="Vector3" default="Vector3(0, 0, 0)" />
+			<description>Calculates movement velocity without collision queries. Input is limited to unit length. Slow walking takes precedence over sprinting. Ground friction uses the larger of horizontal speed and stop speed. Air acceleration limits the velocity component along wish direction rather than total speed. A supplied walkable floor normal adds vertical slope motion while preserving horizontal heading and speed.</description>
+		</method>
+	</methods>
+	<members><member name="settings" type="MovementSettings" setter="set_settings" getter="get_settings">Movement configuration. Must be valid before stepping. After changing stance heights, synchronize project geometry and reset stance before stepping again.</member></members>
+	<signals><signal name="stance_changed"><param index="0" name="height" type="float" /><description>Emitted synchronously when stance changes or is reset. Apply collision geometry corresponding to the resolved total height before returning.</description></signal></signals>
+</class>

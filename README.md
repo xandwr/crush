@@ -12,5 +12,6 @@ it's the `4.7` branch of Godot upstream, with a few custom rendering features.
 | [Camera shadow mask](doc/classes/Camera3D.xml) | `additional_shadow_cull_mask` lets geometry excluded from a camera's view still cast shadows. |
 | [Mirror3D](doc/classes/Mirror3D.xml) | Native planar mirrors with independent camera reflections, world lighting and shadows, and a bounded single bounce. [Rendering checks](tests/rendering/mirror_3d/README.md). |
 | [MovementHistory3D](modules/fps/doc_classes/MovementHistory3D.xml) | Native bounded movement histories, delayed interpolation, and compact command/sample packets. Optional FPS module with [binding contracts](modules/fps/tests/README.md). |
+| [CharacterMotor3D](modules/fps/doc_classes/CharacterMotor3D.xml) | Explicit character movement with MovementSettings, directional air acceleration, stair stepping, floor attachment, and height-based crouch decisions. Projects supply stance geometry and clearance. |
 | [WeaponSimulation](modules/fps/doc_classes/WeaponSimulation.xml) | Native per-firearm cadence, ammunition, reload/equip timers and snapshot replay, configured by WeaponSimulationSettings. |
 | [Hitscan3D](modules/fps/doc_classes/Hitscan3D.xml) | Native first-hit physics traces with range and linear damage falloff from HitscanSettings. Input, authority, and damage application belong to the game. |
