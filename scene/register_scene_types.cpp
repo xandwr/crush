@@ -273,6 +273,7 @@
 #include "scene/3d/sprite_3d.h"
 #include "scene/3d/two_bone_ik_3d.h"
 #include "scene/3d/viewmodel_3d.h"
+#include "scene/3d/world_map_3d.h"
 #include "scene/3d/visible_on_screen_notifier_3d.h"
 #include "scene/3d/voxel_gi.h"
 #include "scene/3d/world_environment.h"
@@ -626,6 +627,7 @@ void register_scene_types() {
 
 #ifndef _3D_DISABLED
 	GDREGISTER_CLASS(Node3D);
+	GDREGISTER_CLASS(WorldMap3D);
 	GDREGISTER_ABSTRACT_CLASS(Node3DGizmo);
 	GDREGISTER_CLASS(Skin);
 	GDREGISTER_ABSTRACT_CLASS(SkinReference);

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="WorldMap3D" inherits="Node3D" api_type="core" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../class.xsd">
+	<brief_description>
+		Base node for a 3D world map.
+	</brief_description>
+	<description>
+		A recognizable root for a 3D world map. WorldMap3D inherits the transform, child hierarchy, ownership, and lifecycle behavior of [Node3D] without adding properties or behavior.
+	</description>
+	<tutorials>
+	</tutorials>
+</class>
