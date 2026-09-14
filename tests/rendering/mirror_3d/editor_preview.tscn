@@ -1,0 +1,58 @@
+[gd_scene load_steps=8 format=3]
+
+[sub_resource type="Environment" id="Environment"]
+background_mode = 1
+background_color = Color(0.03, 0.03, 0.03, 1)
+ambient_light_source = 3
+ambient_light_color = Color(1, 1, 1, 1)
+ambient_light_energy = 0.2
+
+[sub_resource type="StandardMaterial3D" id="RedMaterial"]
+albedo_color = Color(1, 0.08, 0.08, 1)
+
+[sub_resource type="StandardMaterial3D" id="GreenMaterial"]
+albedo_color = Color(0.08, 1, 0.08, 1)
+
+[sub_resource type="StandardMaterial3D" id="FloorMaterial"]
+albedo_color = Color(0.7, 0.7, 0.7, 1)
+
+[sub_resource type="BoxMesh" id="RedMesh"]
+material = SubResource("RedMaterial")
+size = Vector3(0.6, 0.8, 0.6)
+
+[sub_resource type="BoxMesh" id="GreenMesh"]
+material = SubResource("GreenMaterial")
+size = Vector3(0.6, 0.8, 0.6)
+
+[sub_resource type="BoxMesh" id="FloorMesh"]
+material = SubResource("FloorMaterial")
+size = Vector3(8, 0.2, 10)
+
+[node name="MirrorPreview" type="Node3D"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment")
+
+[node name="Mirror3D" type="Mirror3D" parent="."]
+size = Vector2(4, 3)
+resolution_scale = 1.0
+
+[node name="Camera3D" type="Camera3D" parent="."]
+position = Vector3(0, 0, 5)
+current = true
+
+[node name="Red" type="MeshInstance3D" parent="."]
+position = Vector3(-0.8, -0.4, 7)
+mesh = SubResource("RedMesh")
+
+[node name="Green" type="MeshInstance3D" parent="."]
+position = Vector3(0.8, -0.4, 7)
+mesh = SubResource("GreenMesh")
+
+[node name="Floor" type="MeshInstance3D" parent="."]
+position = Vector3(0, -1, 6)
+mesh = SubResource("FloorMesh")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+rotation_degrees = Vector3(-55, -25, 0)
+shadow_enabled = true

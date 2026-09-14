@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="Mirror3D" inherits="VisualInstance3D" api_type="core" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../class.xsd">
+	<brief_description>A rectangular planar reflection surface.</brief_description>
+	<description>
+		Renders a one-sided planar reflection of its [World3D]. The rectangle is centered in local XY with local +Z as the reflective front. Transforms with a positive determinant and orthogonal, nonzero axes support nonuniform scale. Sheared, singular, non-finite, and negative determinant transforms are unsupported and show the black fallback.
+		Each source camera and viewport receives an independent reflection. Reflected views show other mirrors as opaque black surfaces, preventing recursive rendering and texture feedback. Hidden mirrors do not render. Reflection color is composited in linear HDR; the source view applies exposure and tonemapping.
+		Private [Viewmodel3D] geometry is excluded. XR and stereo reflections are not supported.
+		Screen-reading and depth-reading shaders sample the reflection's buffers. Geometry clipping at the mirror occurs during fragment rendering. Reflection targets inherit source-view MSAA and positional shadow atlas settings; camera exposure, tonemapping, glow, and depth of field apply once in the consuming view.
+	</description>
+	<tutorials>
+	</tutorials>
+	<members>
+		<member name="cull_mask" type="int" setter="set_cull_mask" getter="get_cull_mask" default="1048575">Visibility layers rendered inside reflections.</member>
+		<member name="enabled" type="bool" setter="set_enabled" getter="is_enabled" default="true">Enables reflections. Disabled mirrors show opaque black.</member>
+		<member name="resolution_scale" type="float" setter="set_resolution_scale" getter="get_resolution_scale" default="0.5">Reflection dimensions relative to the source view's internal rendering dimensions, rounded up with a minimum of 8 pixels per axis. Must be finite and greater than zero, and at most 1.</member>
+		<member name="size" type="Vector2" setter="set_size" getter="get_size" default="Vector2(2, 2)">Rectangle dimensions in local meters. Both components must be finite and strictly positive.</member>
+	</members>
+</class>

@@ -90,6 +90,7 @@ public:
 	virtual void instance_set_base(RID p_instance, RID p_base) = 0;
 	virtual void instance_set_scenario(RID p_instance, RID p_scenario) = 0;
 	virtual void instance_set_layer_mask(RID p_instance, uint32_t p_mask) = 0;
+	virtual void instance_set_mirror(RID p_instance, RID p_material, const Vector2 &p_size, float p_resolution_scale, uint32_t p_cull_mask, bool p_enabled) = 0;
 	virtual void instance_set_viewmodel_camera(RID p_instance, RID p_camera, bool p_exclusive) = 0;
 	virtual RID instance_get_viewmodel_camera(RID p_instance) const = 0;
 	virtual bool instance_is_viewmodel_exclusive(RID p_instance) const = 0;
@@ -359,7 +360,8 @@ public:
 
 	virtual void render_empty_scene(const Ref<RenderSceneBuffers> &p_render_buffers, RID p_scenario, RID p_shadow_atlas, float p_window_output_max_value) = 0;
 
-	virtual void render_camera(const Ref<RenderSceneBuffers> &p_render_buffers, RID p_camera, RID p_scenario, RID p_viewport, Size2 p_viewport_size, uint32_t p_jitter_phase_count, float p_mesh_lod_threshold, RID p_shadow_atlas, Ref<XRInterface> &p_xr_interface, float p_window_output_max_value, RenderingServerTypes::RenderInfo *r_render_info = nullptr) = 0;
+	virtual void free_viewport_mirror_resources(RID p_viewport) = 0;
+	virtual void render_camera(const Ref<RenderSceneBuffers> &p_render_buffers, RID p_camera, RID p_scenario, RID p_viewport, Size2 p_viewport_size, uint32_t p_jitter_phase_count, float p_mesh_lod_threshold, RID p_shadow_atlas, Ref<XRInterface> &p_xr_interface, float p_window_output_max_value, RenderingServerTypes::RenderInfo *r_render_info = nullptr, RSE::ViewportMSAA p_msaa = RSE::VIEWPORT_MSAA_DISABLED) = 0;
 
 	virtual void update() = 0;
 	virtual void render_probes() = 0;

@@ -1568,6 +1568,10 @@ void RasterizerSceneGLES3::_setup_environment(const RenderDataGLES3 *p_render_da
 
 	scene_state.data.z_far = p_render_data->z_far;
 	scene_state.data.z_near = p_render_data->z_near;
+	scene_state.data.clip_plane[0] = p_render_data->clip_plane.normal.x;
+	scene_state.data.clip_plane[1] = p_render_data->clip_plane.normal.y;
+	scene_state.data.clip_plane[2] = p_render_data->clip_plane.normal.z;
+	scene_state.data.clip_plane[3] = -p_render_data->clip_plane.d;
 
 	scene_state.data.viewport_size[0] = p_screen_size.x;
 	scene_state.data.viewport_size[1] = p_screen_size.y;
@@ -2451,6 +2455,8 @@ void RasterizerSceneGLES3::render_scene(const Ref<RenderSceneBuffers> &p_render_
 			render_data.view_projection[v] = p_camera_data->view_projection[v];
 		}
 
+		render_data.clip_plane = p_camera_data->clip_plane;
+		render_data.is_mirror = p_camera_data->is_mirror;
 		render_data.z_near = p_camera_data->main_projection.get_z_near();
 		render_data.z_far = p_camera_data->main_projection.get_z_far();
 
@@ -2526,6 +2532,10 @@ void RasterizerSceneGLES3::render_scene(const Ref<RenderSceneBuffers> &p_render_
 		tonemap_ubo.brightness = environment_get_adjustments_brightness(render_data.environment);
 		tonemap_ubo.contrast = environment_get_adjustments_contrast(render_data.environment);
 		tonemap_ubo.saturation = environment_get_adjustments_saturation(render_data.environment);
+	}
+
+	if (render_data.is_mirror) {
+		tonemap_ubo = SceneState::TonemapUBO();
 	}
 
 	if (scene_state.tonemap_buffer == 0) {
@@ -3052,6 +3062,10 @@ void RasterizerSceneGLES3::_render_post_processing(const RenderDataGLES3 *p_rend
 		srgb_white = environment_get_white(p_render_data->environment, false, 1.0f);
 	}
 
+	if (p_render_data->is_mirror) {
+		glow_enabled = false;
+	}
+
 	if (glow_enabled) {
 		// Only glow requires srgb_white to be calculated.
 		srgb_white = 1.055 * Math::pow(srgb_white, 1.0f / 2.4f) - 0.055;
@@ -3097,6 +3111,10 @@ void RasterizerSceneGLES3::_render_post_processing(const RenderDataGLES3 *p_rend
 				glTexParameteri(texture_target, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 			}
 		}
+	}
+
+	if (p_render_data->is_mirror) {
+		bcs_spec_constants = 0;
 	}
 
 	if (view_count == 1) {

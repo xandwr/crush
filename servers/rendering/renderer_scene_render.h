@@ -315,6 +315,8 @@ public:
 
 		Transform3D view_offset[RendererSceneRender::MAX_RENDER_VIEWS];
 		Projection view_projection[RendererSceneRender::MAX_RENDER_VIEWS];
+		Plane clip_plane;
+		bool is_mirror = false;
 		Vector2 taa_jitter;
 		float taa_frame_count = 0.0f;
 

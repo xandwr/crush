@@ -63,6 +63,8 @@ public:
 	Vector2 prev_taa_jitter;
 	Projection prev_view_projection[RendererSceneRender::MAX_RENDER_VIEWS];
 
+	Plane clip_plane;
+	bool is_mirror = false;
 	float z_near = 0.0;
 	float z_far = 0.0;
 
@@ -181,6 +183,7 @@ private:
 		float IBL_exposure_normalization; // Adjusts for baked exposure.
 		uint32_t camera_visible_layers;
 		float pass_alpha_multiplier;
+		float clip_plane[4];
 	};
 
 	struct UBODATA {

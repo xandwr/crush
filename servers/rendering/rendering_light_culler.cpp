@@ -392,7 +392,7 @@ bool RenderingLightCuller::add_light_camera_planes_directional(LightCullPlanes &
 
 		if (!_is_colinear_tri(pt0, pt1, pt2)) {
 			// Create plane from 3 points.
-			Plane p(pt0, pt1, pt2);
+			Plane p(pt0, pt1, pt2, data.camera_transform.basis.determinant() < 0 ? COUNTERCLOCKWISE : CLOCKWISE);
 			r_cull_planes.add_cull_plane(p);
 		}
 	}
@@ -410,7 +410,7 @@ bool RenderingLightCuller::add_light_camera_planes_directional(LightCullPlanes &
 
 		if (!_is_colinear_tri(pt0, pt1, pt2)) {
 			// Create plane from 3 points.
-			Plane p(pt0, pt1, pt2);
+			Plane p(pt0, pt1, pt2, data.camera_transform.basis.determinant() < 0 ? COUNTERCLOCKWISE : CLOCKWISE);
 			r_cull_planes.add_cull_plane(p);
 		}
 	}
@@ -572,7 +572,7 @@ bool RenderingLightCuller::_add_light_camera_planes(LightCullPlanes &r_cull_plan
 
 		if (!_is_colinear_tri(pt0, pt1, pt2)) {
 			// Create plane from 3 points.
-			Plane p(pt0, pt1, pt2);
+			Plane p(pt0, pt1, pt2, data.camera_transform.basis.determinant() < 0 ? COUNTERCLOCKWISE : CLOCKWISE);
 			r_cull_planes.add_cull_plane(p);
 		}
 	}
@@ -587,7 +587,7 @@ bool RenderingLightCuller::_add_light_camera_planes(LightCullPlanes &r_cull_plan
 
 		if (!_is_colinear_tri(pt0, pt1, pt2)) {
 			// Create plane from 3 points.
-			Plane p(pt0, pt1, pt2);
+			Plane p(pt0, pt1, pt2, data.camera_transform.basis.determinant() < 0 ? COUNTERCLOCKWISE : CLOCKWISE);
 			r_cull_planes.add_cull_plane(p);
 		}
 	}

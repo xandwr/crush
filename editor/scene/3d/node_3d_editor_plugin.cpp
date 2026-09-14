@@ -68,6 +68,7 @@
 #include "editor/scene/3d/gizmos/lightmap_probe_gizmo_plugin.h"
 #include "editor/scene/3d/gizmos/marker_3d_gizmo_plugin.h"
 #include "editor/scene/3d/gizmos/mesh_instance_3d_gizmo_plugin.h"
+#include "editor/scene/3d/gizmos/mirror_3d_gizmo_plugin.h"
 #include "editor/scene/3d/gizmos/occluder_instance_3d_gizmo_plugin.h"
 #include "editor/scene/3d/gizmos/particles_3d_emission_shape_gizmo_plugin.h"
 #include "editor/scene/3d/gizmos/physics/collision_object_3d_gizmo_plugin.h"
@@ -10090,6 +10091,7 @@ void Node3DEditor::_register_all_gizmos() {
 	add_gizmo_plugin(Ref<Light3DGizmoPlugin>(memnew(Light3DGizmoPlugin)));
 	add_gizmo_plugin(Ref<AudioStreamPlayer3DGizmoPlugin>(memnew(AudioStreamPlayer3DGizmoPlugin)));
 	add_gizmo_plugin(Ref<AudioListener3DGizmoPlugin>(memnew(AudioListener3DGizmoPlugin)));
+	add_gizmo_plugin(Ref<Mirror3DGizmoPlugin>(memnew(Mirror3DGizmoPlugin)));
 	add_gizmo_plugin(Ref<MeshInstance3DGizmoPlugin>(memnew(MeshInstance3DGizmoPlugin)));
 	add_gizmo_plugin(Ref<OccluderInstance3DGizmoPlugin>(memnew(OccluderInstance3DGizmoPlugin)));
 	add_gizmo_plugin(Ref<SoftBody3DGizmoPlugin>(memnew(SoftBody3DGizmoPlugin)));

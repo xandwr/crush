@@ -1209,6 +1209,9 @@ void fragment_shader(in SceneData scene_data) {
 	float premul_alpha = 1.0;
 #endif // PREMUL_ALPHA_USED
 	//lay out everything, whatever is unused is optimized away anyway
+	if (dot(scene_data.clip_plane, vec4(vertex_interp, 1.0)) < 0.0) {
+		discard;
+	}
 	vec3 vertex = vertex_interp;
 #ifdef USE_MULTIVIEW
 	vec3 eye_offset = scene_data.eye_offset[ViewIndex].xyz;

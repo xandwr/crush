@@ -466,7 +466,7 @@ void RendererSceneRenderRD::_render_buffers_post_process_and_tonemap(const Rende
 
 	Size2i target_size = rb->get_target_size();
 	bool can_use_effects = target_size.x >= 8 && target_size.y >= 8; // FIXME I think this should check internal size, we do all our post processing at this size...
-	can_use_effects &= _debug_draw_can_use_effects(debug_draw);
+	can_use_effects &= _debug_draw_can_use_effects(debug_draw) && !p_render_data->scene_data->is_mirror;
 	bool can_use_storage = _render_buffers_can_be_storage();
 
 	RSE::ViewportScaling3DMode scale_mode = rb->get_scaling_3d_mode();
@@ -807,6 +807,16 @@ void RendererSceneRenderRD::_render_buffers_post_process_and_tonemap(const Rende
 			}
 		}
 
+		if (p_render_data->scene_data->is_mirror) {
+			tonemap.tonemap_mode = RSE::ENV_TONE_MAPPER_LINEAR;
+			tonemap.exposure = 1.0;
+			tonemap.use_auto_exposure = false;
+			tonemap.use_glow = false;
+			tonemap.use_bcs = false;
+			tonemap.use_color_correction = false;
+			tonemap.convert_to_srgb = false;
+		}
+
 		if (can_use_storage) {
 			tone_mapper->tonemapper(color_texture, dest_fb, tonemap);
 		} else {
@@ -907,7 +917,7 @@ void RendererSceneRenderRD::_post_process_subpass(RID p_source_texture, RID p_fr
 	// FIXME: Our input it our internal_texture, shouldn't this be using internal_size ??
 	// Seeing we don't support FSR in our mobile renderer right now target_size = internal_size...
 	Size2i target_size = rb->get_target_size();
-	bool can_use_effects = target_size.x >= 8 && target_size.y >= 8 && debug_draw == RSE::VIEWPORT_DEBUG_DRAW_DISABLED;
+	bool can_use_effects = target_size.x >= 8 && target_size.y >= 8 && debug_draw == RSE::VIEWPORT_DEBUG_DRAW_DISABLED && !p_render_data->scene_data->is_mirror;
 
 	RD::DrawListID draw_list = RD::get_singleton()->draw_list_switch_to_next_pass();
 
@@ -981,6 +991,16 @@ void RendererSceneRenderRD::_post_process_subpass(RID p_source_texture, RID p_fr
 		tonemap.debanding_mode = RendererRD::ToneMapper::TonemapSettings::DebandingMode::DEBANDING_MODE_8_BIT;
 	} else {
 		tonemap.debanding_mode = RendererRD::ToneMapper::TonemapSettings::DebandingMode::DEBANDING_MODE_DISABLED;
+	}
+
+	if (p_render_data->scene_data->is_mirror) {
+		tonemap.tonemap_mode = RSE::ENV_TONE_MAPPER_LINEAR;
+		tonemap.exposure = 1.0;
+		tonemap.use_auto_exposure = false;
+		tonemap.use_glow = false;
+		tonemap.use_bcs = false;
+		tonemap.use_color_correction = false;
+		tonemap.convert_to_srgb = false;
 	}
 
 	tone_mapper->tonemapper_subpass(draw_list, p_source_texture, RD::get_singleton()->framebuffer_get_format(p_framebuffer), tonemap);
@@ -1393,6 +1413,8 @@ void RendererSceneRenderRD::render_scene(const Ref<RenderSceneBuffers> &p_render
 			scene_data.prev_view_projection[v] = p_prev_camera_data->view_projection[v];
 		}
 
+		scene_data.clip_plane = p_camera_data->clip_plane;
+		scene_data.is_mirror = p_camera_data->is_mirror;
 		scene_data.z_near = p_camera_data->main_projection.get_z_near();
 		scene_data.z_far = p_camera_data->main_projection.get_z_far();
 

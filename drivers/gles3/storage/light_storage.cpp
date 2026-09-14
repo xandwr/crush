@@ -1335,6 +1335,16 @@ void LightStorage::shadow_atlas_free(RID p_atlas) {
 	shadow_atlas_owner.free(p_atlas);
 }
 
+void LightStorage::shadow_atlas_copy_settings(RID p_from, RID p_to) {
+	const ShadowAtlas *source = shadow_atlas_owner.get_or_null(p_from);
+	ERR_FAIL_NULL(source);
+	shadow_atlas_set_size(p_to, source->size, source->use_16_bits);
+	for (int quadrant = 0; quadrant < 4; quadrant++) {
+		const int subdivision = source->quadrants[quadrant].subdivision;
+		shadow_atlas_set_quadrant_subdivision(p_to, quadrant, MIN(subdivision * subdivision, 16383));
+	}
+}
+
 void LightStorage::shadow_atlas_set_size(RID p_atlas, int p_size, bool p_16_bits) {
 	ShadowAtlas *shadow_atlas = shadow_atlas_owner.get_or_null(p_atlas);
 	ERR_FAIL_NULL(shadow_atlas);

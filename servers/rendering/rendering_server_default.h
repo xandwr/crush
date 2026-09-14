@@ -943,6 +943,7 @@ public:
 	FUNC2(instance_set_base, RID, RID)
 	FUNC2(instance_set_scenario, RID, RID)
 	FUNC2(instance_set_layer_mask, RID, uint32_t)
+	FUNC6(instance_set_mirror, RID, RID, const Vector2 &, float, uint32_t, bool)
 	FUNC3(instance_set_viewmodel_camera, RID, RID, bool)
 	FUNC1RC(RID, instance_get_viewmodel_camera, RID)
 	FUNC1RC(bool, instance_is_viewmodel_exclusive, RID)

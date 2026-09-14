@@ -201,6 +201,7 @@ public:
 	virtual RID shadow_atlas_create() = 0;
 	virtual void shadow_atlas_free(RID p_atlas) = 0;
 
+	virtual void shadow_atlas_copy_settings(RID p_from, RID p_to) = 0;
 	virtual void shadow_atlas_set_size(RID p_atlas, int p_size, bool p_use_16_bits = true) = 0;
 	virtual void shadow_atlas_set_quadrant_subdivision(RID p_atlas, int p_quadrant, int p_subdivision) = 0;
 	virtual bool shadow_atlas_update_light(RID p_atlas, RID p_light_instance, float p_coverage, uint64_t p_light_version, uint32_t p_caster_mask) = 0;

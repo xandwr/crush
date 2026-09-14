@@ -1048,6 +1048,7 @@ public:
 	virtual void instance_set_base(RID p_instance, RID p_base);
 	virtual void instance_set_scenario(RID p_instance, RID p_scenario);
 	virtual void instance_set_layer_mask(RID p_instance, uint32_t p_mask);
+	virtual void instance_set_mirror(RID p_instance, RID p_material, const Vector2 &p_size, float p_resolution_scale, uint32_t p_cull_mask, bool p_enabled) override;
 	virtual void instance_set_viewmodel_camera(RID p_instance, RID p_camera, bool p_exclusive);
 	virtual RID instance_get_viewmodel_camera(RID p_instance) const;
 	virtual bool instance_is_viewmodel_exclusive(RID p_instance) const;
@@ -1186,10 +1187,33 @@ public:
 
 	bool _render_reflection_probe_step(Instance *p_instance, int p_step);
 
+	struct MirrorView {
+		RID camera;
+		RID viewport;
+		RID render_target;
+		RID shadow_atlas;
+		Ref<RenderSceneBuffers> buffers;
+		Size2i size;
+		uint64_t last_frame = 0;
+		RSE::ViewportMSAA msaa = RSE::VIEWPORT_MSAA_DISABLED;
+	};
+	struct Mirror {
+		RID material;
+		Vector2 size;
+		float resolution_scale = 0.5;
+		uint32_t cull_mask = 0xFFFFF;
+		bool enabled = true;
+		Vector<MirrorView> views;
+	};
+	HashMap<RID, Mirror> mirrors;
+	void _free_mirror_view(MirrorView &p_view);
+	void _render_mirrors(const RendererSceneRender::CameraData &p_source, RID p_camera, RID p_scenario, RID p_viewport, const Size2 &p_size, RID p_environment, RID p_attributes, RID p_source_shadow_atlas, uint32_t p_shadow_mask, float p_lod_threshold, float p_output_max_value, RSE::ViewportMSAA p_msaa, RenderingServerTypes::RenderInfo *r_render_info);
+
 	void _render_scene(const RendererSceneRender::CameraData *p_camera_data, const Ref<RenderSceneBuffers> &p_render_buffers, RID p_environment, RID p_force_camera_attributes, RID p_compositor, uint32_t p_visible_layers, RID p_scenario, RID p_viewport, RID p_shadow_atlas, RID p_reflection_probe, int p_reflection_probe_pass, float p_screen_mesh_lod_threshold, float p_window_output_max_value, bool p_using_shadows = true, RenderingServerTypes::RenderInfo *r_render_info = nullptr, uint32_t p_additional_shadow_cull_mask = 0, RID p_camera = RID(), const Projection *p_viewmodel_projection = nullptr, bool p_viewmodel_cast_world_shadows = false);
 	void render_empty_scene(const Ref<RenderSceneBuffers> &p_render_buffers, RID p_scenario, RID p_shadow_atlas, float p_window_output_max_value);
 
-	void render_camera(const Ref<RenderSceneBuffers> &p_render_buffers, RID p_camera, RID p_scenario, RID p_viewport, Size2 p_viewport_size, uint32_t p_jitter_phase_count, float p_screen_mesh_lod_threshold, RID p_shadow_atlas, Ref<XRInterface> &p_xr_interface, float p_window_output_max_value, RenderingServerTypes::RenderInfo *r_render_info = nullptr);
+	void free_viewport_mirror_resources(RID p_viewport) override;
+	void render_camera(const Ref<RenderSceneBuffers> &p_render_buffers, RID p_camera, RID p_scenario, RID p_viewport, Size2 p_viewport_size, uint32_t p_jitter_phase_count, float p_screen_mesh_lod_threshold, RID p_shadow_atlas, Ref<XRInterface> &p_xr_interface, float p_window_output_max_value, RenderingServerTypes::RenderInfo *r_render_info = nullptr, RSE::ViewportMSAA p_msaa = RSE::VIEWPORT_MSAA_DISABLED);
 	void update_dirty_instances() const;
 
 	void render_particle_colliders();

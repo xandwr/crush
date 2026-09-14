@@ -116,6 +116,8 @@ struct RenderDataGLES3 {
 	Vector3 view_eye_offset[RendererSceneRender::MAX_RENDER_VIEWS];
 	Projection view_projection[RendererSceneRender::MAX_RENDER_VIEWS];
 
+	Plane clip_plane;
+	bool is_mirror = false;
 	float z_near = 0.0;
 	float z_far = 0.0;
 
@@ -454,6 +456,7 @@ private:
 			float luminance_multiplier;
 			uint32_t camera_visible_layers;
 			bool pancake_shadows;
+			float clip_plane[4];
 		};
 		static_assert(sizeof(UBO) % 16 == 0, "Scene UBO size must be a multiple of 16 bytes");
 		static_assert(sizeof(UBO) < 16384, "Scene UBO size must be 16384 bytes or smaller");

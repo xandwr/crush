@@ -229,6 +229,7 @@ struct SceneData {
 	float luminance_multiplier;
 	uint camera_visible_layers;
 	bool pancake_shadows;
+	highp vec4 clip_plane;
 };
 
 // The containing data block is for historic reasons.
@@ -1214,6 +1215,7 @@ struct SceneData {
 	float luminance_multiplier;
 	uint camera_visible_layers;
 	bool pancake_shadows;
+	highp vec4 clip_plane;
 };
 
 layout(std140) uniform SceneDataBlock { // ubo:2
@@ -2186,6 +2188,9 @@ vec4 textureArray_bicubic(sampler2DArray tex, vec3 uv, vec2 texture_size) {
 void main() {
 #ifndef RENDER_MOTION_VECTORS
 	//lay out everything, whatever is unused is optimized away anyway
+	if (dot(scene_data_block.data.clip_plane, vec4(vertex_interp, 1.0)) < 0.0) {
+		discard;
+	}
 	vec3 vertex = vertex_interp;
 #ifdef USE_MULTIVIEW
 	vec3 eye_offset = multiview_data_block.data.eye_offset[ViewIndex].xyz;

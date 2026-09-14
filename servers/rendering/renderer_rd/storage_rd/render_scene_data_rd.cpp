@@ -117,6 +117,10 @@ void RenderSceneDataRD::update_ubo(RID p_uniform_buffer, RSE::ViewportDebugDraw 
 
 	ubo.z_far = z_far;
 	ubo.z_near = z_near;
+	ubo.clip_plane[0] = clip_plane.normal.x;
+	ubo.clip_plane[1] = clip_plane.normal.y;
+	ubo.clip_plane[2] = clip_plane.normal.z;
+	ubo.clip_plane[3] = -clip_plane.d;
 
 	ubo.flags = 0;
 

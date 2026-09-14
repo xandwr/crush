@@ -863,6 +863,15 @@ void RendererSceneCull::instance_set_scenario(RID p_instance, RID p_scenario) {
 	Instance *instance = instance_owner.get_or_null(p_instance);
 	ERR_FAIL_NULL(instance);
 
+	if (Mirror *mirror = mirrors.getptr(p_instance)) {
+		RSG::material_storage->material_set_param(mirror->material, "reflection_valid", false);
+		RSG::material_storage->material_set_param(mirror->material, "reflection_texture", RID());
+		for (MirrorView &view : mirror->views) {
+			_free_mirror_view(view);
+		}
+		mirror->views.clear();
+	}
+
 	if (instance->scenario) {
 		instance->scenario->instances.remove(&instance->scenario_item);
 
@@ -2730,7 +2739,164 @@ bool RendererSceneCull::_light_instance_update_shadow(Instance *p_instance, cons
 	return animated_material_found;
 }
 
-void RendererSceneCull::render_camera(const Ref<RenderSceneBuffers> &p_render_buffers, RID p_camera, RID p_scenario, RID p_viewport, Size2 p_viewport_size, uint32_t p_jitter_phase_count, float p_screen_mesh_lod_threshold, RID p_shadow_atlas, Ref<XRInterface> &p_xr_interface, float p_window_output_max_value, RenderingServerTypes::RenderInfo *r_render_info) {
+void RendererSceneCull::free_viewport_mirror_resources(RID p_viewport) {
+	for (KeyValue<RID, Mirror> &entry : mirrors) {
+		for (int i = entry.value.views.size() - 1; i >= 0; i--) {
+			if (entry.value.views[i].viewport == p_viewport) {
+				RSG::material_storage->material_set_param(entry.value.material, "reflection_texture", RID());
+				RSG::material_storage->material_set_param(entry.value.material, "reflection_valid", false);
+				_free_mirror_view(entry.value.views.write[i]);
+				entry.value.views.remove_at(i);
+			}
+		}
+	}
+}
+
+void RendererSceneCull::_free_mirror_view(MirrorView &p_view) {
+	p_view.buffers.unref();
+	RSG::light_storage->shadow_atlas_free(p_view.shadow_atlas);
+	RSG::texture_storage->render_target_free(p_view.render_target);
+}
+
+void RendererSceneCull::instance_set_mirror(RID p_instance, RID p_material, const Vector2 &p_size, float p_resolution_scale, uint32_t p_cull_mask, bool p_enabled) {
+	ERR_FAIL_NULL(instance_owner.get_or_null(p_instance));
+	Mirror *previous = mirrors.getptr(p_instance);
+	if (p_material.is_null()) {
+		if (previous) {
+			for (MirrorView &view : previous->views) {
+				_free_mirror_view(view);
+			}
+			mirrors.erase(p_instance);
+		}
+		return;
+	}
+	ERR_FAIL_COND(!p_size.is_finite() || p_size.x <= 0 || p_size.y <= 0 || !Math::is_finite(p_resolution_scale) || p_resolution_scale <= 0 || p_resolution_scale > 1);
+	Mirror &mirror = mirrors[p_instance];
+	mirror.material = p_material;
+	mirror.size = p_size;
+	mirror.resolution_scale = p_resolution_scale;
+	mirror.cull_mask = p_cull_mask;
+	mirror.enabled = p_enabled;
+	RSG::material_storage->material_set_param(p_material, "reflection_valid", false);
+	if (!p_enabled) {
+		RSG::material_storage->material_set_param(p_material, "reflection_texture", RID());
+		for (MirrorView &view : mirror.views) {
+			_free_mirror_view(view);
+		}
+		mirror.views.clear();
+	}
+}
+
+void RendererSceneCull::_render_mirrors(const RendererSceneRender::CameraData &p_source, RID p_camera, RID p_scenario, RID p_viewport, const Size2 &p_size, RID p_environment, RID p_attributes, RID p_source_shadow_atlas, uint32_t p_shadow_mask, float p_lod_threshold, float p_output_max_value, RSE::ViewportMSAA p_msaa, RenderingServerTypes::RenderInfo *r_render_info) {
+	const uint64_t frame = RSG::rasterizer->get_frame_number();
+	const Vector<Plane> frustum = p_source.main_projection.get_projection_planes(p_source.main_transform);
+	Vector<Pair<RID, RID>> bindings;
+	for (KeyValue<RID, Mirror> &entry : mirrors) {
+		Mirror &mirror = entry.value;
+		RSG::material_storage->material_set_param(mirror.material, "reflection_valid", false);
+		RSG::material_storage->material_set_param(mirror.material, "reflection_texture", RID());
+		for (int i = mirror.views.size() - 1; i >= 0; i--) {
+			MirrorView &view = mirror.views.write[i];
+			if (!camera_owner.owns(view.camera) || frame - view.last_frame > 120) {
+				_free_mirror_view(view);
+				mirror.views.remove_at(i);
+			}
+		}
+	}
+	update_dirty_instances();
+	for (KeyValue<RID, Mirror> &entry : mirrors) {
+		Mirror &mirror = entry.value;
+		Instance *instance = instance_owner.get_or_null(entry.key);
+		if (!mirror.enabled || !instance || !instance->visible || !instance->scenario || instance->scenario->self != p_scenario || !(instance->layer_mask & p_source.visible_layers) || instance->viewmodel_exclusive) {
+			continue;
+		}
+		const Transform3D &surface = instance->transform;
+		if (!surface.is_finite() || !surface.basis.is_orthogonal() || surface.basis.determinant() <= 0) {
+			continue;
+		}
+		const Vector3 normal = surface.basis.get_column(2).normalized();
+		const Plane plane(normal, surface.origin);
+		const real_t distance = plane.distance_to(p_source.main_transform.origin);
+		if (distance <= CMP_EPSILON) {
+			continue;
+		}
+		Vector3 corners[4];
+		for (int i = 0; i < 4; i++) {
+			corners[i] = surface.xform(Vector3((i & 1 ? 0.5 : -0.5) * mirror.size.x, (i & 2 ? 0.5 : -0.5) * mirror.size.y, 0));
+		}
+		bool outside = false;
+		for (const Plane &frustum_plane : frustum) {
+			bool all_outside = true;
+			for (const Vector3 &corner : corners) {
+				if (frustum_plane.distance_to(corner) <= 0) {
+					all_outside = false;
+					break;
+				}
+			}
+			if (all_outside) {
+				outside = true;
+				break;
+			}
+		}
+		if (outside) {
+			continue;
+		}
+		int view_index = -1;
+		for (int i = 0; i < mirror.views.size(); i++) {
+			if (mirror.views[i].camera == p_camera && mirror.views[i].viewport == p_viewport) {
+				view_index = i;
+				break;
+			}
+		}
+		if (view_index < 0) {
+			MirrorView view;
+			view.camera = p_camera;
+			view.viewport = p_viewport;
+			view.render_target = RSG::texture_storage->render_target_create();
+			RSG::texture_storage->render_target_set_use_hdr(view.render_target, true);
+			view.shadow_atlas = RSG::light_storage->shadow_atlas_create();
+
+			view.buffers = render_buffers_create();
+			mirror.views.push_back(view);
+			view_index = mirror.views.size() - 1;
+		}
+		MirrorView &view = mirror.views.write[view_index];
+		const Size2i target_size(MAX(8, int(Math::ceil(p_size.x * mirror.resolution_scale))), MAX(8, int(Math::ceil(p_size.y * mirror.resolution_scale))));
+		if (view.size != target_size || view.msaa != p_msaa) {
+			view.size = target_size;
+			view.msaa = p_msaa;
+			RSG::texture_storage->render_target_set_size(view.render_target, target_size.x, target_size.y, 1);
+			RenderSceneBuffersConfiguration config;
+			config.set_render_target(view.render_target);
+			config.set_internal_size(target_size);
+			config.set_target_size(target_size);
+			config.set_msaa_3d(p_msaa);
+			view.buffers->configure(&config);
+		}
+		RSG::light_storage->shadow_atlas_copy_settings(p_source_shadow_atlas, view.shadow_atlas);
+		view.last_frame = frame;
+		Transform3D reflected = p_source.main_transform;
+		reflected.origin -= normal * (2 * distance);
+		for (int axis = 0; axis < 3; axis++) {
+			const Vector3 source_axis = reflected.basis.get_column(axis);
+			reflected.basis.set_column(axis, source_axis - normal * (2 * normal.dot(source_axis)));
+		}
+		RendererSceneRender::CameraData camera_data;
+		camera_data.set_camera(reflected, p_source.main_projection, p_source.is_orthogonal, p_source.vaspect, p_source.taa_jitter, p_source.taa_frame_count, mirror.cull_mask);
+		camera_data.clip_plane = reflected.affine_inverse().xform(plane);
+		camera_data.is_mirror = true;
+		RSG::texture_storage->render_target_request_clear(view.render_target, Color(0, 0, 0, 1));
+		_render_scene(&camera_data, view.buffers, p_environment, p_attributes, RID(), mirror.cull_mask, p_scenario, p_viewport, view.shadow_atlas, RID(), -1, p_lod_threshold, p_output_max_value, true, r_render_info, p_shadow_mask);
+		bindings.push_back(Pair<RID, RID>(mirror.material, RSG::texture_storage->render_target_get_texture(view.render_target)));
+	}
+	for (const Pair<RID, RID> &binding : bindings) {
+		RSG::material_storage->material_set_param(binding.first, "reflection_texture", binding.second);
+		RSG::material_storage->material_set_param(binding.first, "reflection_valid", true);
+	}
+	update_dirty_instances();
+}
+
+void RendererSceneCull::render_camera(const Ref<RenderSceneBuffers> &p_render_buffers, RID p_camera, RID p_scenario, RID p_viewport, Size2 p_viewport_size, uint32_t p_jitter_phase_count, float p_screen_mesh_lod_threshold, RID p_shadow_atlas, Ref<XRInterface> &p_xr_interface, float p_window_output_max_value, RenderingServerTypes::RenderInfo *r_render_info, RSE::ViewportMSAA p_msaa) {
 #ifndef _3D_DISABLED
 
 	Camera *camera = camera_owner.get_or_null(p_camera);
@@ -2840,6 +3006,17 @@ void RendererSceneCull::render_camera(const Ref<RenderSceneBuffers> &p_render_bu
 
 	RID environment = _render_get_environment(p_camera, p_scenario);
 	RID compositor = _render_get_compositor(p_camera, p_scenario);
+
+	if (p_xr_interface.is_null() && !mirrors.is_empty()) {
+		_render_mirrors(camera_data, p_camera, p_scenario, p_viewport, p_viewport_size, environment, camera->attributes, p_shadow_atlas, camera->additional_shadow_cull_mask, p_screen_mesh_lod_threshold, p_window_output_max_value, p_msaa, r_render_info);
+	}
+
+	if (p_xr_interface.is_valid()) {
+		for (const KeyValue<RID, Mirror> &entry : mirrors) {
+			RSG::material_storage->material_set_param(entry.value.material, "reflection_valid", false);
+			RSG::material_storage->material_set_param(entry.value.material, "reflection_texture", RID());
+		}
+	}
 
 	RENDER_TIMESTAMP("Update Occlusion Buffer")
 	// For now just cull on the first camera
@@ -3508,7 +3685,7 @@ void RendererSceneCull::_render_scene(const RendererSceneRender::CameraData *p_c
 		cull_data.visible_layers = p_visible_layers;
 		cull_data.additional_shadow_cull_mask = p_additional_shadow_cull_mask;
 		cull_data.render_reflection_probe = render_reflection_probe;
-		cull_data.occlusion_buffer = RendererSceneOcclusionCull::get_singleton()->buffer_get_ptr(p_viewport);
+		cull_data.occlusion_buffer = p_camera_data->is_mirror ? nullptr : RendererSceneOcclusionCull::get_singleton()->buffer_get_ptr(p_viewport);
 		cull_data.camera_matrix = &p_camera_data->main_projection;
 		cull_data.viewmodel_camera_matrix = p_viewmodel_projection;
 		cull_data.visibility_viewport_mask = scenario->viewport_visibility_masks.has(p_viewport) ? scenario->viewport_visibility_masks[p_viewport] : 0;
@@ -4480,6 +4657,14 @@ bool RendererSceneCull::free(RID p_rid) {
 	}
 
 	if (camera_owner.owns(p_rid)) {
+		for (KeyValue<RID, Mirror> &entry : mirrors) {
+			for (int i = entry.value.views.size() - 1; i >= 0; i--) {
+				if (entry.value.views[i].camera == p_rid) {
+					_free_mirror_view(entry.value.views.write[i]);
+					entry.value.views.remove_at(i);
+				}
+			}
+		}
 		camera_owner.free(p_rid);
 
 	} else if (scenario_owner.owns(p_rid)) {
@@ -4506,6 +4691,7 @@ bool RendererSceneCull::free(RID p_rid) {
 
 		Instance *instance = instance_owner.get_or_null(p_rid);
 
+		instance_set_mirror(p_rid, RID(), Vector2(2, 2), 0.5, 0xFFFFF, false);
 		instance_geometry_set_lightmap(p_rid, RID(), Rect2(), 0);
 		instance_set_scenario(p_rid, RID());
 		instance_set_base(p_rid, RID());

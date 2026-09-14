@@ -734,6 +734,7 @@ public:
 	virtual void instance_set_base(RID p_instance, RID p_base) = 0;
 	virtual void instance_set_scenario(RID p_instance, RID p_scenario) = 0;
 	virtual void instance_set_layer_mask(RID p_instance, uint32_t p_mask) = 0;
+	virtual void instance_set_mirror(RID p_instance, RID p_material, const Vector2 &p_size, float p_resolution_scale, uint32_t p_cull_mask, bool p_enabled) = 0;
 	virtual void instance_set_viewmodel_camera(RID p_instance, RID p_camera, bool p_exclusive) = 0;
 	virtual RID instance_get_viewmodel_camera(RID p_instance) const = 0;
 	virtual bool instance_is_viewmodel_exclusive(RID p_instance) const = 0;
