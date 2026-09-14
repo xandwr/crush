@@ -215,6 +215,11 @@ Dictionary TrenchBroomGameConfigExporter::export_game_config(const String &p_par
 	if (destination.is_empty()) {
 		return failure("Set an absolute game config export directory in Editor Settings > FileSystem > External Programs > TrenchBroom.");
 	}
+	String asset_relative = ProjectSettings::get_singleton()->get_project_data_dir_name().path_join("trenchbroom/assets");
+	String asset_directory = project_path().path_join(asset_relative);
+	if (destination.to_lower() == asset_directory.to_lower() || destination.to_lower().begins_with(asset_directory.to_lower() + "/") || asset_directory.to_lower().begins_with(destination.to_lower() + "/")) {
+		return failure("The game config export directory must not overlap the generated asset catalog.");
+	}
 	int version = GLOBAL_GET("trenchbroom/compatibility/game_config_version");
 	if (version == 0) {
 		version = 9;
@@ -237,6 +242,10 @@ Dictionary TrenchBroomGameConfigExporter::export_game_config(const String &p_par
 		String absolute = ProjectSettings::get_singleton()->globalize_path(source).simplify_path();
 		if (destination.to_lower().begins_with(absolute.trim_suffix("/").to_lower() + "/") || destination.to_lower() == absolute.to_lower()) {
 			return failure("The export destination must be outside every texture source directory.");
+		}
+		String data_directory = project_path().path_join(ProjectSettings::get_singleton()->get_project_data_dir_name());
+		if (absolute.to_lower() == data_directory.to_lower() || absolute.to_lower().begins_with(data_directory.to_lower() + "/")) {
+			return failure("Texture sources must not be inside the generated project data directory.");
 		}
 		String error = collect_textures(absolute, "", files, material_names);
 		if (!error.is_empty()) {
@@ -292,7 +301,7 @@ Dictionary TrenchBroomGameConfigExporter::export_game_config(const String &p_par
 	if (version == 4) {
 		Dictionary texture_package;
 		texture_package["type"] = "directory";
-		texture_package["root"] = "textures";
+		texture_package["root"] = asset_relative.path_join("textures");
 		materials["package"] = texture_package;
 		Dictionary texture_format;
 		texture_format["format"] = "image";
@@ -303,11 +312,12 @@ Dictionary TrenchBroomGameConfigExporter::export_game_config(const String &p_par
 		texture_format["extensions"] = old_extensions;
 		materials["format"] = texture_format;
 	} else {
-		materials["root"] = "textures";
+		materials["root"] = asset_relative.path_join("textures");
 		materials["extensions"] = extensions;
 	}
 	materials["excludes"] = GLOBAL_GET("trenchbroom/textures/exclusion_patterns");
 	materials["attribute"] = "wad";
+	String palette_target;
 	String palette = GLOBAL_GET("trenchbroom/textures/palette");
 	if (!palette.is_empty()) {
 		if (!valid_project_path(palette) || !FileAccess::exists(palette)) {
@@ -315,7 +325,8 @@ Dictionary TrenchBroomGameConfigExporter::export_game_config(const String &p_par
 		}
 		String target = "palette." + palette.get_extension();
 		files[target] = palette;
-		materials["palette"] = target;
+		palette_target = target;
+		materials["palette"] = asset_relative.path_join(target);
 	}
 	config[version == 9 ? "materials" : "textures"] = materials;
 
@@ -398,28 +409,51 @@ Dictionary TrenchBroomGameConfigExporter::export_game_config(const String &p_par
 	}
 
 	String marker = ".godot-trenchbroom-project";
-	bool replacing = DirAccess::dir_exists_absolute(destination);
+	PackedStringArray destinations({ destination, asset_directory });
+	PackedStringArray staging_paths;
+	PackedStringArray backups;
+	Vector<bool> replacing;
 	Ref<DirAccess> parent = DirAccess::create(DirAccess::ACCESS_FILESYSTEM);
-	if (parent->is_link(destination) || (replacing && (!FileAccess::exists(destination.path_join(marker)) || FileAccess::get_file_as_string(destination.path_join(marker)) != project_path()))) {
-		return failure(vformat("Refusing to replace an export directory not owned by this project: %s", destination));
+	for (const String &path : destinations) {
+		bool exists = DirAccess::dir_exists_absolute(path);
+		if (parent->is_link(path) || (exists && (!FileAccess::exists(path.path_join(marker)) || FileAccess::get_file_as_string(path.path_join(marker)) != project_path()))) {
+			return failure(vformat("Refusing to replace a generated directory not owned by this project: %s", path));
+		}
+		String staging = path + ".staging-" + itos(OS::get_singleton()->get_ticks_usec());
+		String backup = staging + ".previous";
+		if (DirAccess::dir_exists_absolute(staging) || DirAccess::dir_exists_absolute(backup)) {
+			return failure("An export is already using the staging directory. Try again.");
+		}
+		staging_paths.push_back(staging);
+		backups.push_back(backup);
+		replacing.push_back(exists);
 	}
-	String staging = destination + ".staging-" + itos(OS::get_singleton()->get_ticks_usec());
-	String backup = staging + ".previous";
-	if (DirAccess::dir_exists_absolute(staging) || DirAccess::dir_exists_absolute(backup)) {
-		return failure("An export is already using the staging directory. Try again.");
+	auto cleanup_staging = [&]() {
+		for (const String &path : staging_paths) {
+			if (DirAccess::dir_exists_absolute(path)) {
+				remove_tree(path);
+			}
+		}
+	};
+	String staging = staging_paths[0];
+	String asset_staging = staging_paths[1];
+	Error error = DirAccess::make_dir_recursive_absolute(staging);
+	if (error == OK) {
+		error = DirAccess::make_dir_recursive_absolute(asset_staging.path_join("textures"));
 	}
-	Error error = DirAccess::make_dir_recursive_absolute(staging.path_join("textures"));
 	if (error != OK) {
-		return failure(vformat("Cannot create export staging directory: %s", staging));
+		cleanup_staging();
+		return failure("Cannot create the export staging directories.");
 	}
 	for (const KeyValue<String, String> &file : files) {
-		String target = staging.path_join(file.key);
+		bool asset = file.key.begins_with("textures/") || file.key == palette_target;
+		String target = (asset ? asset_staging : staging).path_join(file.key);
 		error = DirAccess::make_dir_recursive_absolute(target.get_base_dir());
 		if (error == OK) {
 			error = DirAccess::copy_absolute(file.value, target);
 		}
 		if (error != OK) {
-			remove_tree(staging);
+			cleanup_staging();
 			return failure(vformat("Failed to copy %s into the export. Previous export preserved.", file.value));
 		}
 	}
@@ -429,35 +463,52 @@ Dictionary TrenchBroomGameConfigExporter::export_game_config(const String &p_par
 	if (error == OK) {
 		error = write_text(staging.path_join("Entities.fgd"), fgd);
 	}
-	if (error == OK) {
-		error = write_text(staging.path_join(marker), project_path());
+	for (const String &path : staging_paths) {
+		if (error == OK) {
+			error = write_text(path.path_join(marker), project_path());
+		}
 	}
 	if (error == OK) {
 		error = write_text(staging.path_join("GameConfig.cfg"), JSON::stringify(config, "\t") + "\n");
 	}
 	if (error != OK) {
-		remove_tree(staging);
+		cleanup_staging();
 		return failure("Failed to write game configuration files. Previous export preserved.");
 	}
-	if (replacing && DirAccess::rename_absolute(destination, backup) != OK) {
-		remove_tree(staging);
-		return failure("Cannot replace the previous export. Close files using it and try again.");
-	}
-	if (DirAccess::rename_absolute(staging, destination) != OK) {
-		if (replacing) {
-			DirAccess::rename_absolute(backup, destination);
+	for (int i = 0; i < destinations.size(); i++) {
+		bool backed_up = false;
+		if (replacing[i]) {
+			error = DirAccess::rename_absolute(destinations[i], backups[i]);
+			backed_up = error == OK;
 		}
-		remove_tree(staging);
-		return failure(vformat("Cannot install the export. Check %s and %s.", destination, backup));
+		if (error == OK) {
+			error = DirAccess::rename_absolute(staging_paths[i], destinations[i]);
+		}
+		if (error != OK) {
+			String recovery;
+			if (backed_up && DirAccess::rename_absolute(backups[i], destinations[i]) != OK) {
+				recovery += "\nPrevious files remain at: " + backups[i];
+			}
+			for (int j = i - 1; j >= 0; j--) {
+				if (remove_tree(destinations[j]) != OK || (replacing[j] && DirAccess::rename_absolute(backups[j], destinations[j]) != OK)) {
+					recovery += "\nCheck export recovery paths: " + destinations[j] + " and " + backups[j];
+				}
+			}
+			cleanup_staging();
+			return failure("Cannot install the export. Close files using the generated directories and try again." + recovery);
+		}
 	}
 	String cleanup_warning;
-	if (replacing && remove_tree(backup) != OK) {
-		cleanup_warning = vformat("\nCould not remove the previous export backup: %s", backup);
+	for (int i = 0; i < backups.size(); i++) {
+		if (replacing[i] && remove_tree(backups[i]) != OK) {
+			cleanup_warning += vformat("\nCould not remove the previous export backup: %s", backups[i]);
+		}
 	}
 	Dictionary result;
 	result["success"] = true;
 	result["directory"] = destination;
-	result["message"] = vformat("Exported %d entities and %d textures.\nSelect '%s' in TrenchBroom and set its Game Path to:\n%s\nKeep authored maps outside this generated directory.%s", definitions.size(), material_names.size(), game_name(), destination, cleanup_warning);
+	result["game_path"] = project_path();
+	result["message"] = vformat("Exported %d entities and %d textures.\nTrenchBroom game: %s\nGame Path (Godot project folder):\n%s%s", definitions.size(), material_names.size(), game_name(), project_path(), cleanup_warning);
 	return result;
 }
 

@@ -3566,7 +3566,7 @@
 		</member>
 		<member name="trenchbroom/general/texture_source_directories" type="PackedStringArray" setter="" getter="" default="PackedStringArray()">
 			Project directories whose images are copied into the exported TrenchBroom texture catalog. Relative subfolders are preserved and merged. Duplicate material names, ignoring case and file extension, fail export rather than silently overwrite a texture. Hidden subdirectories are skipped, and linked subdirectories are rejected.
-			Supported image extensions are BMP, EXR, HDR, JPEG, JPG, PNG, TGA, and WebP. Re-export after changing source textures. Set TrenchBroom's Game Path to the generated game directory shown in the dock.
+			Supported image extensions are BMP, EXR, HDR, JPEG, JPG, PNG, TGA, and WebP. Re-export after changing source textures. The texture catalog is generated under the project data directory (normally [code].godot/trenchbroom/assets[/code]). Set TrenchBroom's Game Path to the Godot project root shown in the dock.
 		</member>
 		<member name="trenchbroom/map_formats/formats" type="Array" setter="" getter="">
 			Ordered list of dictionaries with a [code]format[/code] string and optional [code]initial_map[/code] project file path. Supported choices are Valve, Standard, Quake2, and Quake3. Defaults to these four formats with no starter maps. The editor provides dropdowns, map file pickers, and reordering buttons.
@@ -3585,7 +3585,7 @@
 			Patterns are passed to TrenchBroom and do not prevent source images from being copied or used by future Godot material generation.
 		</member>
 		<member name="trenchbroom/textures/palette" type="String" setter="" getter="" default="&quot;&quot;">
-			Optional project palette file copied into the exported game directory. Empty by default, which omits the palette reference entirely. Loose image textures do not require a palette.
+			Optional project palette file copied into the generated project asset catalog. Empty by default, which omits the palette reference entirely. Loose image textures do not require a palette.
 		</member>
 		<member name="xr/openxr/binding_modifiers/analog_threshold" type="bool" setter="" getter="" default="false">
 			If [code]true[/code], enables the analog threshold binding modifier if supported by the XR runtime.

@@ -4,7 +4,7 @@
 		Exports the current project's native TrenchBroom game configuration.
 	</brief_description>
 	<description>
-		Editor-only helper used by the TrenchBroom dock and editor automation. Reads the project's TrenchBroom settings and generates a game configuration, FGD, and copied texture catalog in a dedicated project subdirectory. It does not launch TrenchBroom, generate Godot materials, or import maps.
+		Editor-only helper used by the TrenchBroom dock and editor automation. Reads the project's TrenchBroom settings and generates a game configuration and FGD in a dedicated export subdirectory, and a texture catalog in the project data directory. It does not launch TrenchBroom, generate Godot materials, or import maps.
 	</description>
 	<tutorials>
 	</tutorials>
@@ -13,7 +13,7 @@
 			<return type="Dictionary" />
 			<param index="0" name="parent_directory" type="String" />
 			<description>
-				Exports beneath the absolute filesystem [param parent_directory], usually TrenchBroom's user games directory. Returns [code]success[/code] and [code]message[/code], plus [code]directory[/code] on success. TrenchBroom's Game Path must be set to that generated directory.
+				Exports beneath the absolute filesystem [param parent_directory], usually TrenchBroom's user games directory. Returns [code]success[/code] and [code]message[/code], plus [code]directory[/code] and [code]game_path[/code] on success. TrenchBroom's Game Path must be set to [code]game_path[/code], the Godot project root.
 				Validates and stages files before replacing an existing export. Directories without this project's ownership marker are not replaced. Generated directories must not contain hand-authored files, as re-export replaces their contents. Failed validation leaves the previous export intact.
 			</description>
 		</method>
