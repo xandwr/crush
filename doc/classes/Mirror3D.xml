@@ -9,7 +9,18 @@
 	</description>
 	<tutorials>
 	</tutorials>
+	<methods>
+		<method name="get_collision_body" qualifiers="const">
+			<return type="StaticBody3D" />
+			<description>Returns the internal physics body used for ray queries and body collisions, or [code]null[/code] before collision is first enabled. Its parent is this mirror. The body persists when collision is disabled; do not free or reparent it. Configure collision through the mirror properties.</description>
+		</method>
+	</methods>
 	<members>
+		<member name="collision_enabled" type="bool" setter="set_collision_enabled" getter="is_collision_enabled" default="false">Enables a solid internal [StaticBody3D]. Independent of reflection visibility and [member enabled].</member>
+		<member name="collision_thickness" type="float" setter="set_collision_thickness" getter="get_collision_thickness" default="0.1">Thickness of the default box in local meters. Must be finite and positive. The box extends behind the reflective plane, from local Z zero to negative thickness, and follows [member size]. Ignored when a custom shape is assigned.</member>
+		<member name="collision_layer" type="int" setter="set_collision_layer" getter="get_collision_layer" default="1">Physics layers occupied by the collision body.</member>
+		<member name="collision_mask" type="int" setter="set_collision_mask" getter="get_collision_mask" default="1">Physics layers scanned by the collision body.</member>
+		<member name="collision_shape" type="Shape3D" setter="set_collision_shape" getter="get_collision_shape">Optional custom collision surface centered at the mirror origin. Clearing it restores the automatically sized box. Resource edits update physics through [CollisionShape3D].</member>
 		<member name="cull_mask" type="int" setter="set_cull_mask" getter="get_cull_mask" default="1048575">Visibility layers rendered inside reflections.</member>
 		<member name="enabled" type="bool" setter="set_enabled" getter="is_enabled" default="true">Enables reflections. Disabled mirrors show opaque black.</member>
 		<member name="resolution_scale" type="float" setter="set_resolution_scale" getter="get_resolution_scale" default="0.5">Reflection dimensions relative to the source view's internal rendering dimensions, rounded up with a minimum of 8 pixels per axis. Must be finite and greater than zero, and at most 1.</member>

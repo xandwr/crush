@@ -103,5 +103,69 @@ TEST_CASE("[SceneTree][Mirror3D] Transform warnings and world lifecycle") {
 	memdelete(mirror);
 }
 
+TEST_CASE("[SceneTree][Mirror3D] Solid collision configuration and serialization") {
+	Mirror3D *mirror = memnew(Mirror3D);
+	CHECK_FALSE(mirror->is_collision_enabled());
+	CHECK(mirror->get_collision_body() == nullptr);
+	mirror->set_size(Vector2(4, 3));
+	mirror->set_collision_thickness(0.2);
+	mirror->set_collision_layer(4);
+	mirror->set_collision_mask(11);
+	mirror->set_collision_enabled(true);
+	StaticBody3D *body = mirror->get_collision_body();
+	REQUIRE(body);
+	CHECK(body->get_parent() == mirror);
+	CHECK(body->get_collision_layer() == 4);
+	CHECK(body->get_collision_mask() == 11);
+	CHECK(mirror->get_child_count(false) == 0);
+	CollisionShape3D *shape_node = Object::cast_to<CollisionShape3D>(body->get_child(0, true));
+	REQUIRE(shape_node);
+	Ref<BoxShape3D> box = shape_node->get_shape();
+	REQUIRE(box.is_valid());
+	CHECK(box->get_size() == Vector3(4, 3, 0.2));
+	CHECK(shape_node->get_position().z == doctest::Approx(-0.1));
+	mirror->set_size(Vector2(6, 5));
+	CHECK(box->get_size() == Vector3(6, 5, 0.2));
+	ERR_PRINT_OFF;
+	mirror->set_collision_thickness(0);
+	mirror->set_collision_thickness(Math::NaN);
+	ERR_PRINT_ON;
+	CHECK(mirror->get_collision_thickness() == doctest::Approx(0.2));
+	Ref<BoxShape3D> custom;
+	custom.instantiate();
+	custom->set_size(Vector3(1, 2, 3));
+	mirror->set_collision_shape(custom);
+	CHECK(shape_node->get_shape() == custom);
+	CHECK(shape_node->get_position() == Vector3());
+	Ref<PackedScene> packed;
+	packed.instantiate();
+	REQUIRE(packed->pack(mirror) == OK);
+	Mirror3D *restored = Object::cast_to<Mirror3D>(packed->instantiate());
+	REQUIRE(restored);
+	CHECK(restored->is_collision_enabled());
+	CHECK(restored->get_collision_layer() == 4);
+	CHECK(restored->get_collision_mask() == 11);
+	CHECK(restored->get_collision_thickness() == doctest::Approx(0.2));
+	CHECK(restored->get_collision_shape() == custom);
+	CHECK(restored->get_child_count(true) == 1);
+	Window *root = SceneTree::get_singleton()->get_root();
+	root->add_child(mirror);
+	mirror->set_collision_enabled(false);
+	CHECK(shape_node->is_disabled());
+	CHECK(body->get_collision_layer() == 0);
+	CHECK(body->get_collision_mask() == 0);
+	mirror->set_collision_shape(Ref<Shape3D>());
+	mirror->set_collision_enabled(true);
+	CHECK_FALSE(shape_node->is_disabled());
+	CHECK(body->get_collision_layer() == 4);
+	CHECK(shape_node->get_shape() == box);
+	root->remove_child(mirror);
+	root->add_child(mirror);
+	CHECK(mirror->get_collision_body() == body);
+	root->remove_child(mirror);
+	memdelete(restored);
+	memdelete(mirror);
+}
+
 } //namespace TestMirror3D
 #endif
