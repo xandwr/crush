@@ -844,6 +844,12 @@
 			If left empty, the default flags are [code]{directory}[/code], which is replaced by the absolute path to the directory that is being opened in the terminal.
 			[b]Note:[/b] If the terminal emulator is set to PowerShell, cmd, or Konsole, Godot will automatically prepend arguments to this list, as these terminals require nonstandard arguments to open in the correct folder.
 		</member>
+		<member name="filesystem/external_programs/trenchbroom/executable_path" type="String" setter="" getter="">
+			Path to the TrenchBroom executable on this machine. Reserved for native TrenchBroom integration; currently stores the path without launching the program.
+		</member>
+		<member name="filesystem/external_programs/trenchbroom/game_config_export_directory" type="String" setter="" getter="">
+			Directory intended to contain this game's generated [code]GameConfig.cfg[/code] and accompanying files. Reserved for native TrenchBroom integration; currently stores the path without exporting files.
+		</member>
 		<member name="filesystem/external_programs/vector_image_editor" type="String" setter="" getter="">
 			The program that opens vector image files when clicking "Open in External Program" option in Filesystem Dock. If not specified, the file will be opened in the system's default program.
 		</member>

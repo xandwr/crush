@@ -3541,6 +3541,9 @@
 		<member name="threading/worker_pool/max_threads" type="int" setter="" getter="" default="-1">
 			Maximum number of threads to be used by [WorkerThreadPool]. On Web, a value of [code]-1[/code] means [code]1[/code]. On other platforms, it means all [i]logical[/i] CPU cores available (see [method OS.get_processor_count]).
 		</member>
+		<member name="trenchbroom/general/test_checkbox" type="bool" setter="" getter="" default="false">
+			Placeholder checkbox for the native TrenchBroom project settings section. Has no effect on map importing or runtime behavior.
+		</member>
 		<member name="xr/openxr/binding_modifiers/analog_threshold" type="bool" setter="" getter="" default="false">
 			If [code]true[/code], enables the analog threshold binding modifier if supported by the XR runtime.
 		</member>

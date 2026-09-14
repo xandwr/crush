@@ -295,6 +295,7 @@ EditorPropertyNameProcessor::EditorPropertyNameProcessor() {
 	capitalize_string_remaps["tcp"] = "TCP";
 	capitalize_string_remaps["textfile"] = "TextFile";
 	capitalize_string_remaps["tls"] = "TLS";
+	capitalize_string_remaps["trenchbroom"] = "TrenchBroom";
 	capitalize_string_remaps["tv"] = "TV";
 	capitalize_string_remaps["tvos"] = "tvOS";
 	capitalize_string_remaps["uastc"] = "UASTC";
