@@ -127,6 +127,7 @@
 #include "scene/resources/compressed_texture_resource_format.h"
 #include "scene/resources/curve_texture.h"
 #include "scene/resources/drawable_texture_2d.h"
+#include "scene/resources/entity_definition.h"
 #include "scene/resources/environment.h"
 #include "scene/resources/external_texture.h"
 #include "scene/resources/font.h"
@@ -1093,6 +1094,7 @@ void register_scene_types() {
 
 	GDREGISTER_ABSTRACT_CLASS(SceneState);
 	GDREGISTER_CLASS(PackedScene);
+	GDREGISTER_CLASS(EntityDefinition);
 
 	GDREGISTER_CLASS(SceneTree);
 	GDREGISTER_ABSTRACT_CLASS(SceneTreeTimer); // sorry, you can't create it

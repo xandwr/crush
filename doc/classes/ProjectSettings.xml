@@ -3541,6 +3541,10 @@
 		<member name="threading/worker_pool/max_threads" type="int" setter="" getter="" default="-1">
 			Maximum number of threads to be used by [WorkerThreadPool]. On Web, a value of [code]-1[/code] means [code]1[/code]. On other platforms, it means all [i]logical[/i] CPU cores available (see [method OS.get_processor_count]).
 		</member>
+		<member name="trenchbroom/general/entity_definitions" type="PackedStringArray" setter="" getter="" default="PackedStringArray()">
+			Project resource paths to [EntityDefinition] files intended to make entities available in TrenchBroom. Each entry should reference a saved definition resource, rather than its entity scene.
+			[b]Note:[/b] This list is reserved for future entity registration and FGD export. It does not instantiate scenes or export definitions yet.
+		</member>
 		<member name="trenchbroom/general/materials_output_directory" type="String" setter="" getter="" default="&quot;&quot;">
 			Project directory intended to receive generated materials for the native TrenchBroom integration. An empty value leaves the output directory unconfigured.
 			[b]Note:[/b] This setting is reserved for future material generation. No materials are generated yet.

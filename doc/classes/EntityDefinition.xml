@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="EntityDefinition" inherits="Resource" api_type="core" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../class.xsd">
+	<brief_description>
+		Reusable description of a scene-based map entity.
+	</brief_description>
+	<description>
+		Associates a stable map classname and description with a [PackedScene]. Save this resource and add its path to [member ProjectSettings.trenchbroom/general/entity_definitions] to configure it for future native TrenchBroom integration.
+		This resource only stores the definition. It does not instantiate the scene, validate classnames, or export FGD files.
+	</description>
+	<tutorials>
+	</tutorials>
+	<members>
+		<member name="classname" type="String" setter="set_classname" getter="get_classname" default="&quot;&quot;">
+			Stable identifier intended for the map's [code skip-lint]classname[/code] key, such as [code]item_health[/code]. Choose a unique identifier within the project's entity definitions and keep it stable when renaming or moving scene files.
+		</member>
+		<member name="description" type="String" setter="set_description" getter="get_description" default="&quot;&quot;">
+			Human-readable description intended for the map editor. May contain multiple lines.
+		</member>
+		<member name="scene" type="PackedScene" setter="set_scene" getter="get_scene">
+			Scene representing this entity. Assigning it stores a reference without instantiating it. Scene-based 3D entities should use a [Node3D]-derived root.
+		</member>
+	</members>
+</class>
