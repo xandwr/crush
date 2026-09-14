@@ -1763,6 +1763,8 @@ ProjectSettings::ProjectSettings() {
 	_add_builtin_input_map();
 
 	GLOBAL_DEF_BASIC("trenchbroom/general/test_checkbox", false);
+	GLOBAL_DEF_BASIC(PropertyInfo(Variant::PACKED_STRING_ARRAY, "trenchbroom/general/texture_source_directories", PROPERTY_HINT_TYPE_STRING, vformat("%d/%d:", Variant::STRING, PROPERTY_HINT_DIR)), PackedStringArray());
+	GLOBAL_DEF_BASIC(PropertyInfo(Variant::STRING, "trenchbroom/general/materials_output_directory", PROPERTY_HINT_DIR), "");
 
 	// Keep the enum values in sync with the `DisplayServerEnums::ScreenOrientation` enum.
 	custom_prop_info["display/window/handheld/orientation"] = PropertyInfo(Variant::INT, "display/window/handheld/orientation", PROPERTY_HINT_ENUM, "Landscape,Portrait,Reverse Landscape,Reverse Portrait,Sensor Landscape,Sensor Portrait,Sensor");
