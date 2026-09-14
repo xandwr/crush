@@ -7,7 +7,7 @@ def configure(env):
 
 
 def get_doc_classes():
-    return ["MovementHistory3D", "WeaponSimulation", "WeaponSimulationSettings"]
+    return ["Hitscan3D", "HitscanSettings", "MovementHistory3D", "WeaponSimulation", "WeaponSimulationSettings"]
 
 
 def get_doc_path():

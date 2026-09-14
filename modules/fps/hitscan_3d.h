@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  register_types.cpp                                                    */
+/*  hitscan_3d.h                                                          */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,23 +28,59 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#include "register_types.h"
+#pragma once
 
-#include "hitscan_3d.h"
-#include "movement_history_3d.h"
-#include "weapon_simulation.h"
+#include "core/io/resource.h"
+#include "core/variant/typed_array.h"
+#include "servers/physics_3d/physics_server_3d.h"
 
-#include "core/object/class_db.h"
+class HitscanSettings : public Resource {
+	GDCLASS(HitscanSettings, Resource);
+	double damage = 10.0;
+	double max_distance = 1024.0;
+	double falloff_start_distance = 32.0;
+	double falloff_end_distance = 1024.0;
+	double falloff_min_multiplier = 0.3;
 
-void initialize_fps_module(ModuleInitializationLevel p_level) {
-	if (p_level == MODULE_INITIALIZATION_LEVEL_SCENE) {
-		GDREGISTER_CLASS(HitscanSettings);
-		GDREGISTER_CLASS(Hitscan3D);
-		GDREGISTER_CLASS(MovementHistory3D);
-		GDREGISTER_CLASS(WeaponSimulationSettings);
-		GDREGISTER_CLASS(WeaponSimulation);
+protected:
+	static void _bind_methods();
+
+public:
+	void set_damage(double p_value) {
+		damage = p_value;
+		emit_changed();
 	}
-}
+	double get_damage() const { return damage; }
+	void set_max_distance(double p_value) {
+		max_distance = p_value;
+		emit_changed();
+	}
+	double get_max_distance() const { return max_distance; }
+	void set_falloff_start_distance(double p_value) {
+		falloff_start_distance = p_value;
+		emit_changed();
+	}
+	double get_falloff_start_distance() const { return falloff_start_distance; }
+	void set_falloff_end_distance(double p_value) {
+		falloff_end_distance = p_value;
+		emit_changed();
+	}
+	double get_falloff_end_distance() const { return falloff_end_distance; }
+	void set_falloff_min_multiplier(double p_value) {
+		falloff_min_multiplier = p_value;
+		emit_changed();
+	}
+	double get_falloff_min_multiplier() const { return falloff_min_multiplier; }
+	PackedStringArray validation_errors() const;
+	double damage_at_distance(double p_distance) const;
+};
 
-void uninitialize_fps_module(ModuleInitializationLevel p_level) {
-}
+class Hitscan3D : public RefCounted {
+	GDCLASS(Hitscan3D, RefCounted);
+
+protected:
+	static void _bind_methods();
+
+public:
+	static Dictionary trace(PhysicsDirectSpaceState3D *p_space, const Vector3 &p_origin, const Vector3 &p_direction, const Ref<HitscanSettings> &p_settings, uint32_t p_collision_mask = UINT32_MAX, const TypedArray<RID> &p_exclude = TypedArray<RID>(), bool p_collide_with_areas = false);
+};

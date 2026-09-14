@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="Hitscan3D" inherits="RefCounted" api_type="core" version="4.7">
+	<brief_description>Stateless first-hit weapon traces against a 3D physics space.</brief_description>
+	<description>Resolves a single current-world ray and evaluates distance-based damage with [HitscanSettings]. The caller owns shot authorization, origin selection, physics scheduling, damage application, and networking. This class does not consume ammunition, enforce server authority, rewind physics, or apply damage. Call during the physics processing window in which the supplied [PhysicsDirectSpaceState3D] is safe to query.</description>
+	<tutorials></tutorials>
+	<methods>
+		<method name="trace" qualifiers="static">
+			<return type="Dictionary" />
+			<param index="0" name="space" type="PhysicsDirectSpaceState3D" />
+			<param index="1" name="origin" type="Vector3" />
+			<param index="2" name="direction" type="Vector3" />
+			<param index="3" name="settings" type="HitscanSettings" />
+			<param index="4" name="collision_mask" type="int" default="4294967295" />
+			<param index="5" name="exclude" type="RID[]" default="[]" />
+			<param index="6" name="collide_with_areas" type="bool" default="false" />
+			<description>Returns an empty dictionary for a null space, missing or invalid settings, nonfinite vectors, a direction whose squared length differs from 1 by more than 0.001, or an unrepresentable endpoint. Accepted directions are normalized before applying range.
+			A valid query returns [code]hit[/code], [code skip-lint]origin[/code], [code]endpoint[/code], [code]distance[/code], [code]normal[/code], [code]collider[/code], [code]collider_id[/code], [code]rid[/code], [code]shape[/code], [code]face_index[/code], and [code]damage[/code]. A miss has [code]hit = false[/code], an endpoint at maximum range, distance equal to maximum range, zero normal and damage, null collider, zero collider ID, invalid RID, and shape/face indices of -1.
+			Bodies are always queried. Areas are optional. Back faces are included. Starting inside a solid reports an immediate hit with zero normal, subject to the physics backend's ray support. Exclude all shooter body RIDs to avoid self-hits. The nearest collision blocks the ray, regardless of whether the collider can receive damage. Shape and face indices come directly from physics; face indices may be -1 and do not identify render materials. Hits originating at the same distance have backend-defined ordering.
+			The returned damage is a scalar suggestion for the project to apply. Collider references and RIDs are local physics data, not a network payload. There is no penetration, spread, or lag compensation.</description>
+		</method>
+	</methods>
+</class>

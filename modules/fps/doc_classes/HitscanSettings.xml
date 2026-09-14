@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="HitscanSettings" inherits="Resource" api_type="core" version="4.7">
+	<brief_description>Editable hitscan range and linear damage falloff.</brief_description>
+	<description>Used by [Hitscan3D]. Each query reads the current values. Invalid authored values are retained for inspection and reported by [method validation_errors]. Distances use world units; damage units belong to the project.</description>
+	<tutorials></tutorials>
+	<methods>
+		<method name="damage_at_distance" qualifiers="const">
+			<return type="float" />
+			<param index="0" name="distance" type="float" />
+			<description>Returns full damage through [member falloff_start_distance], linearly decreases to [member damage] times [member falloff_min_multiplier] at [member falloff_end_distance], and retains that minimum through [member max_distance]. Beyond maximum range returns zero. Invalid settings or a negative or nonfinite distance return -1. Does not apply damage to an entity.</description>
+		</method>
+		<method name="validation_errors" qualifiers="const">
+			<return type="PackedStringArray" />
+			<description>Returns authored configuration errors, or an empty array for valid settings.</description>
+		</method>
+	</methods>
+	<members>
+		<member name="damage" type="float" setter="set_damage" getter="get_damage" default="10.0">Finite nonnegative damage before falloff.</member>
+		<member name="max_distance" type="float" setter="set_max_distance" getter="get_max_distance" default="1024.0">Finite positive maximum trace distance.</member>
+		<member name="falloff_start_distance" type="float" setter="set_falloff_start_distance" getter="get_falloff_start_distance" default="32.0">Finite nonnegative start of linear falloff.</member>
+		<member name="falloff_end_distance" type="float" setter="set_falloff_end_distance" getter="get_falloff_end_distance" default="1024.0">Finite end of falloff, strictly after its start and at most maximum range.</member>
+		<member name="falloff_min_multiplier" type="float" setter="set_falloff_min_multiplier" getter="get_falloff_min_multiplier" default="0.3">Finite damage multiplier between zero and one.</member>
+	</members>
+</class>
