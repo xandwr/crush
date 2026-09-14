@@ -1391,6 +1391,8 @@ void RenderForwardMobile::_render_scene(RenderDataRD *p_render_data, const Color
 		_fill_render_list(RENDER_LIST_OPAQUE, p_render_data, PASS_MODE_COLOR);
 		render_list[RENDER_LIST_OPAQUE].sort_by_key();
 		render_list[RENDER_LIST_ALPHA].sort_by_reverse_depth_and_priority();
+		_fill_instance_data(RENDER_LIST_OPAQUE);
+		_fill_instance_data(RENDER_LIST_ALPHA);
 		if (scene_state.used_screen_texture) {
 			_render_buffers_ensure_screen_texture(p_render_data);
 			_render_buffers_copy_screen_texture(p_render_data);
