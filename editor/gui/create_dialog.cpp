@@ -212,6 +212,11 @@ bool CreateDialog::_should_hide_type(const StringName &p_type) const {
 		if (!EditorNode::get_editor_data().script_class_is_parent(p_type, base_type)) {
 			return true; // Wrong inheritance.
 		}
+		for (const StringName &E : type_blacklist) {
+			if (EditorNode::get_editor_data().script_class_is_parent(p_type, E)) {
+				return true;
+			}
+		}
 
 		StringName native_type = ScriptServer::get_global_class_native_base(p_type);
 		if (ClassDB::class_exists(native_type)) {
@@ -981,6 +986,7 @@ CreateDialog::CreateDialog() {
 
 	type_blacklist.insert("MissingNode");
 	type_blacklist.insert("MissingResource");
+	type_blacklist.insert("ViewmodelMapCopy");
 
 	HSplitContainer *hsc = memnew(HSplitContainer);
 	add_child(hsc);

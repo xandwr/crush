@@ -35,6 +35,8 @@ STATIC_ASSERT_INCOMPLETE_TYPE(class, RenderingServer);
 #include "core/object/callable_mp.h"
 #include "core/object/class_db.h"
 #include "core/os/os.h"
+#include "scene/3d/camera_3d.h"
+#include "scene/3d/viewmodel_3d.h"
 #include "scene/main/scene_tree.h"
 #include "scene/resources/material.h"
 #include "servers/rendering/rendering_server.h"
@@ -65,6 +67,23 @@ void VisualInstance3D::_update_visibility() {
 	RS::get_singleton()->instance_set_visible(instance, visible);
 }
 
+void VisualInstance3D::_update_viewmodel_camera() {
+	RID camera_rid;
+	bool exclusive = false;
+	for (Node *ancestor = get_parent(); ancestor; ancestor = ancestor->get_parent()) {
+		Viewmodel3D *viewmodel = Object::cast_to<Viewmodel3D>(ancestor);
+		if (viewmodel) {
+			Camera3D *camera = viewmodel->get_camera_3d();
+			if (camera && viewmodel->_owns_camera() && viewmodel->is_using_viewmodel_projection()) {
+				camera_rid = camera->get_camera();
+				exclusive = !viewmodel->is_visible_to_other_cameras();
+			}
+			break;
+		}
+	}
+	RenderingServer::get_singleton()->instance_set_viewmodel_camera(instance, camera_rid, exclusive);
+}
+
 void VisualInstance3D::set_instance_use_identity_transform(bool p_enable) {
 	// Prevent sending instance transforms when using global coordinates.
 	_set_use_identity_transform(p_enable);
@@ -91,6 +110,7 @@ void VisualInstance3D::_notification(int p_what) {
 		case NOTIFICATION_ENTER_WORLD: {
 			ERR_FAIL_COND(get_world_3d().is_null());
 			RenderingServer::get_singleton()->instance_set_scenario(instance, get_world_3d()->get_scenario());
+			_update_viewmodel_camera();
 			_update_visibility();
 		} break;
 
@@ -112,6 +132,7 @@ void VisualInstance3D::_notification(int p_what) {
 		} break;
 
 		case NOTIFICATION_EXIT_WORLD: {
+			RenderingServer::get_singleton()->instance_set_viewmodel_camera(instance, RID(), false);
 			RenderingServer::get_singleton()->instance_set_scenario(instance, RID());
 			RenderingServer::get_singleton()->instance_attach_skeleton(instance, RID());
 			_set_vi_visible(false);
@@ -119,6 +140,10 @@ void VisualInstance3D::_notification(int p_what) {
 
 		case NOTIFICATION_VISIBILITY_CHANGED: {
 			_update_visibility();
+		} break;
+
+		case Viewmodel3D::NOTIFICATION_VIEWMODEL_CHANGED: {
+			_update_viewmodel_camera();
 		} break;
 	}
 }

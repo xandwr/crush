@@ -444,6 +444,7 @@ void RenderSceneBuffersGLES3::_clear_msaa3d_buffers() {
 }
 
 void RenderSceneBuffersGLES3::_clear_intermediate_buffers() {
+	_clear_viewmodel_buffers();
 	if (internal3d.fbo) {
 		glDeleteFramebuffers(1, &internal3d.fbo);
 		internal3d.fbo = 0;
@@ -458,6 +459,56 @@ void RenderSceneBuffersGLES3::_clear_intermediate_buffers() {
 		GLES3::Utilities::get_singleton()->texture_free_data(internal3d.depth);
 		internal3d.depth = 0;
 	}
+}
+
+void RenderSceneBuffersGLES3::_clear_viewmodel_buffers() {
+	if (viewmodel3d.fbo) {
+		glDeleteFramebuffers(1, &viewmodel3d.fbo);
+		viewmodel3d.fbo = 0;
+	}
+
+	if (viewmodel3d.depth != 0) {
+		GLES3::Utilities::get_singleton()->texture_free_data(viewmodel3d.depth);
+		viewmodel3d.depth = 0;
+	}
+	viewmodel3d.color = 0;
+}
+
+GLuint RenderSceneBuffersGLES3::get_viewmodel_fbo() {
+	_check_render_buffers();
+	ERR_FAIL_COND_V(internal3d.color == 0, 0);
+
+	if (viewmodel3d.fbo != 0) {
+		return viewmodel3d.fbo;
+	}
+
+	GLES3::TextureStorage *texture_storage = GLES3::TextureStorage::get_singleton();
+	GLenum texture_target = view_count > 1 ? GL_TEXTURE_2D_ARRAY : GL_TEXTURE_2D;
+	glGenTextures(1, &viewmodel3d.depth);
+	glBindTexture(texture_target, viewmodel3d.depth);
+	if (view_count > 1) {
+		glTexImage3D(texture_target, 0, GL_DEPTH24_STENCIL8, internal_size.x, internal_size.y, view_count, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, nullptr);
+	} else {
+		glTexImage2D(texture_target, 0, GL_DEPTH24_STENCIL8, internal_size.x, internal_size.y, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, nullptr);
+	}
+	glTexParameteri(texture_target, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(texture_target, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(texture_target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(texture_target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	GLES3::Utilities::get_singleton()->texture_allocated_data(viewmodel3d.depth, internal_size.x * internal_size.y * view_count * 4, "Viewmodel depth texture");
+
+	viewmodel3d.color = internal3d.color;
+	glGenFramebuffers(1, &viewmodel3d.fbo);
+	glBindFramebuffer(GL_FRAMEBUFFER, viewmodel3d.fbo);
+	_rt_attach_textures(viewmodel3d.color, viewmodel3d.depth, 1, view_count, true);
+	GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+	if (status != GL_FRAMEBUFFER_COMPLETE) {
+		WARN_PRINT("Could not create viewmodel framebuffer, status: " + texture_storage->get_framebuffer_error(status));
+		_clear_viewmodel_buffers();
+	}
+	glBindTexture(texture_target, 0);
+	glBindFramebuffer(GL_FRAMEBUFFER, GLES3::TextureStorage::system_fbo);
+	return viewmodel3d.fbo;
 }
 
 void RenderSceneBuffersGLES3::check_backbuffer(bool p_need_color, bool p_need_depth) {

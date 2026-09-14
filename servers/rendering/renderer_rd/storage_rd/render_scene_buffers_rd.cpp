@@ -641,6 +641,13 @@ RID RenderSceneBuffersRD::get_depth_texture(const uint32_t p_layer) {
 	}
 }
 
+RID RenderSceneBuffersRD::get_viewmodel_depth_texture() {
+	if (!has_texture(RB_SCOPE_BUFFERS, RB_TEX_VIEWMODEL_DEPTH)) {
+		create_texture(RB_SCOPE_BUFFERS, RB_TEX_VIEWMODEL_DEPTH, get_depth_format(false, false, can_be_storage), get_depth_usage_bits(false, false, can_be_storage));
+	}
+	return get_texture(RB_SCOPE_BUFFERS, RB_TEX_VIEWMODEL_DEPTH);
+}
+
 // Subsampled textures.
 
 RID RenderSceneBuffersRD::get_color_subsampled() {

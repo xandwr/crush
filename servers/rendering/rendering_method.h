@@ -55,6 +55,12 @@ public:
 	virtual void camera_set_frustum(RID p_camera, float p_size, Vector2 p_offset, float p_z_near, float p_z_far) = 0;
 	virtual void camera_set_transform(RID p_camera, const Transform3D &p_transform) = 0;
 	virtual void camera_set_cull_mask(RID p_camera, uint32_t p_layers) = 0;
+	virtual void camera_set_additional_shadow_cull_mask(RID p_camera, uint32_t p_layers) = 0;
+	virtual void camera_set_viewmodel_projection(RID p_camera, float p_fovy_degrees, float p_z_near, float p_z_far) = 0;
+	virtual void camera_set_viewmodel_projection_enabled(RID p_camera, bool p_enabled) = 0;
+	virtual bool camera_is_viewmodel_projection_enabled(RID p_camera) const = 0;
+	virtual void camera_set_viewmodel_cast_world_shadows(RID p_camera, bool p_enabled) = 0;
+	virtual bool camera_is_viewmodel_casting_world_shadows(RID p_camera) const = 0;
 	virtual void camera_set_environment(RID p_camera, RID p_env) = 0;
 	virtual void camera_set_camera_attributes(RID p_camera, RID p_attributes) = 0;
 	virtual void camera_set_compositor(RID p_camera, RID p_compositor) = 0;
@@ -84,6 +90,9 @@ public:
 	virtual void instance_set_base(RID p_instance, RID p_base) = 0;
 	virtual void instance_set_scenario(RID p_instance, RID p_scenario) = 0;
 	virtual void instance_set_layer_mask(RID p_instance, uint32_t p_mask) = 0;
+	virtual void instance_set_viewmodel_camera(RID p_instance, RID p_camera, bool p_exclusive) = 0;
+	virtual RID instance_get_viewmodel_camera(RID p_instance) const = 0;
+	virtual bool instance_is_viewmodel_exclusive(RID p_instance) const = 0;
 	virtual void instance_set_pivot_data(RID p_instance, float p_sorting_offset, bool p_use_aabb_center) = 0;
 	virtual void instance_set_transform(RID p_instance, const Transform3D &p_transform) = 0;
 	virtual void instance_attach_object_instance_id(RID p_instance, ObjectID p_id) = 0;

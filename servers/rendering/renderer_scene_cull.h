@@ -83,6 +83,12 @@ public:
 		float size;
 		Vector2 offset;
 		uint32_t visible_layers;
+		uint32_t additional_shadow_cull_mask = 0;
+		float viewmodel_fov = 54.0;
+		float viewmodel_znear = 0.01;
+		float viewmodel_zfar = 100.0;
+		bool viewmodel_projection_enabled = false;
+		bool viewmodel_cast_world_shadows = false;
 		bool vaspect;
 		RID env;
 		RID attributes;
@@ -112,6 +118,12 @@ public:
 	virtual void camera_set_frustum(RID p_camera, float p_size, Vector2 p_offset, float p_z_near, float p_z_far);
 	virtual void camera_set_transform(RID p_camera, const Transform3D &p_transform);
 	virtual void camera_set_cull_mask(RID p_camera, uint32_t p_layers);
+	virtual void camera_set_additional_shadow_cull_mask(RID p_camera, uint32_t p_layers);
+	virtual void camera_set_viewmodel_projection(RID p_camera, float p_fovy_degrees, float p_z_near, float p_z_far);
+	virtual void camera_set_viewmodel_projection_enabled(RID p_camera, bool p_enabled);
+	virtual bool camera_is_viewmodel_projection_enabled(RID p_camera) const;
+	virtual void camera_set_viewmodel_cast_world_shadows(RID p_camera, bool p_enabled);
+	virtual bool camera_is_viewmodel_casting_world_shadows(RID p_camera) const;
 	virtual void camera_set_environment(RID p_camera, RID p_env);
 	virtual void camera_set_camera_attributes(RID p_camera, RID p_attributes);
 	virtual void camera_set_compositor(RID p_camera, RID p_compositor);
@@ -280,6 +292,8 @@ public:
 
 		uint32_t flags = 0;
 		uint32_t layer_mask = 0; //for fast layer-mask discard
+		RID viewmodel_camera;
+		bool viewmodel_exclusive = false;
 		RID base_rid;
 		union {
 			uint64_t instance_data_rid;
@@ -422,7 +436,9 @@ public:
 		RSE::ShadowCastingSetting cast_shadows;
 
 		uint32_t layer_mask;
+		RID viewmodel_camera;
 		// Fit in 32 bits.
+		bool viewmodel_exclusive : 1;
 		bool mirror : 1;
 		bool receive_shadows : 1;
 		bool visible : 1;
@@ -885,6 +901,7 @@ public:
 
 	struct InstanceCullResult {
 		PagedArray<RenderGeometryInstance *> geometry_instances;
+		PagedArray<RenderGeometryInstance *> viewmodel_geometry_instances;
 		PagedArray<Instance *> lights;
 		PagedArray<RID> light_instances;
 		PagedArray<RID> lightmaps;
@@ -903,6 +920,7 @@ public:
 
 		void clear() {
 			geometry_instances.clear();
+			viewmodel_geometry_instances.clear();
 			lights.clear();
 			light_instances.clear();
 			lightmaps.clear();
@@ -928,6 +946,7 @@ public:
 
 		void reset() {
 			geometry_instances.reset();
+			viewmodel_geometry_instances.reset();
 			lights.reset();
 			light_instances.reset();
 			lightmaps.reset();
@@ -953,6 +972,7 @@ public:
 
 		void append_from(InstanceCullResult &p_cull_result) {
 			geometry_instances.merge_unordered(p_cull_result.geometry_instances);
+			viewmodel_geometry_instances.merge_unordered(p_cull_result.viewmodel_geometry_instances);
 			lights.merge_unordered(p_cull_result.lights);
 			light_instances.merge_unordered(p_cull_result.light_instances);
 			lightmaps.merge_unordered(p_cull_result.lightmaps);
@@ -979,6 +999,7 @@ public:
 
 		void init(PagedArrayPool<RID> *p_rid_pool, PagedArrayPool<RenderGeometryInstance *> *p_geometry_instance_pool, PagedArrayPool<Instance *> *p_instance_pool) {
 			geometry_instances.set_page_pool(p_geometry_instance_pool);
+			viewmodel_geometry_instances.set_page_pool(p_geometry_instance_pool);
 			light_instances.set_page_pool(p_rid_pool);
 			lights.set_page_pool(p_instance_pool);
 			lightmaps.set_page_pool(p_rid_pool);
@@ -1027,6 +1048,9 @@ public:
 	virtual void instance_set_base(RID p_instance, RID p_base);
 	virtual void instance_set_scenario(RID p_instance, RID p_scenario);
 	virtual void instance_set_layer_mask(RID p_instance, uint32_t p_mask);
+	virtual void instance_set_viewmodel_camera(RID p_instance, RID p_camera, bool p_exclusive);
+	virtual RID instance_get_viewmodel_camera(RID p_instance) const;
+	virtual bool instance_is_viewmodel_exclusive(RID p_instance) const;
 	virtual void instance_set_pivot_data(RID p_instance, float p_sorting_offset, bool p_use_aabb_center);
 	virtual void instance_set_transform(RID p_instance, const Transform3D &p_transform);
 	virtual void instance_attach_object_instance_id(RID p_instance, ObjectID p_id);
@@ -1081,7 +1105,7 @@ public:
 
 	void _light_instance_setup_directional_shadow(int p_shadow_index, Instance *p_instance, const Transform3D p_cam_transform, const Projection &p_cam_projection, bool p_cam_orthogonal, bool p_cam_vaspect);
 
-	_FORCE_INLINE_ bool _light_instance_update_shadow(Instance *p_instance, const Transform3D p_cam_transform, const Projection &p_cam_projection, bool p_cam_orthogonal, bool p_cam_vaspect, RID p_shadow_atlas, Scenario *p_scenario, float p_screen_mesh_lod_threshold, uint32_t p_visible_layers = 0xFFFFFF);
+	_FORCE_INLINE_ bool _light_instance_update_shadow(Instance *p_instance, const Transform3D p_cam_transform, const Projection &p_cam_projection, bool p_cam_orthogonal, bool p_cam_vaspect, RID p_shadow_atlas, Scenario *p_scenario, float p_screen_mesh_lod_threshold, uint32_t p_visible_layers = 0xFFFFFF, RID p_camera = RID(), bool p_exclude_viewmodel_shadows = false);
 
 	RID _render_get_environment(RID p_camera, RID p_scenario);
 	RID _render_get_compositor(RID p_camera, RID p_scenario);
@@ -1123,6 +1147,7 @@ public:
 		SpinLock lock;
 
 		Frustum frustum;
+		Frustum viewmodel_frustum;
 	} cull;
 
 	struct VisibilityCullData {
@@ -1143,10 +1168,14 @@ public:
 		Scenario *scenario = nullptr;
 		RID shadow_atlas;
 		Transform3D cam_transform;
+		RID camera;
+		bool exclude_viewmodel_shadows = false;
 		uint32_t visible_layers;
+		uint32_t additional_shadow_cull_mask = 0;
 		Instance *render_reflection_probe = nullptr;
 		const RendererSceneOcclusionCull::HZBuffer *occlusion_buffer;
 		const Projection *camera_matrix;
+		const Projection *viewmodel_camera_matrix = nullptr;
 		uint64_t visibility_viewport_mask;
 	};
 
@@ -1157,7 +1186,7 @@ public:
 
 	bool _render_reflection_probe_step(Instance *p_instance, int p_step);
 
-	void _render_scene(const RendererSceneRender::CameraData *p_camera_data, const Ref<RenderSceneBuffers> &p_render_buffers, RID p_environment, RID p_force_camera_attributes, RID p_compositor, uint32_t p_visible_layers, RID p_scenario, RID p_viewport, RID p_shadow_atlas, RID p_reflection_probe, int p_reflection_probe_pass, float p_screen_mesh_lod_threshold, float p_window_output_max_value, bool p_using_shadows = true, RenderingServerTypes::RenderInfo *r_render_info = nullptr);
+	void _render_scene(const RendererSceneRender::CameraData *p_camera_data, const Ref<RenderSceneBuffers> &p_render_buffers, RID p_environment, RID p_force_camera_attributes, RID p_compositor, uint32_t p_visible_layers, RID p_scenario, RID p_viewport, RID p_shadow_atlas, RID p_reflection_probe, int p_reflection_probe_pass, float p_screen_mesh_lod_threshold, float p_window_output_max_value, bool p_using_shadows = true, RenderingServerTypes::RenderInfo *r_render_info = nullptr, uint32_t p_additional_shadow_cull_mask = 0, RID p_camera = RID(), const Projection *p_viewmodel_projection = nullptr, bool p_viewmodel_cast_world_shadows = false);
 	void render_empty_scene(const Ref<RenderSceneBuffers> &p_render_buffers, RID p_scenario, RID p_shadow_atlas, float p_window_output_max_value);
 
 	void render_camera(const Ref<RenderSceneBuffers> &p_render_buffers, RID p_camera, RID p_scenario, RID p_viewport, Size2 p_viewport_size, uint32_t p_jitter_phase_count, float p_screen_mesh_lod_threshold, RID p_shadow_atlas, Ref<XRInterface> &p_xr_interface, float p_window_output_max_value, RenderingServerTypes::RenderInfo *r_render_info = nullptr);

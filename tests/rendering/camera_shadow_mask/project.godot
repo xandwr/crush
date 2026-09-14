@@ -1,0 +1,8 @@
+config_version=5
+[application]
+config/name="Camera shadow mask regression"
+[display]
+window/size/viewport_width=384
+window/size/viewport_height=384
+[rendering]
+renderer/rendering_method="gl_compatibility"
