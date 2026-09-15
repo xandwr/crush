@@ -113,7 +113,8 @@ void Rope3DTube::topology(int p_count, int p_sides, int p_caps, bool p_mirrored)
 	dirty = true;
 }
 
-void Rope3DTube::update(const Vector<Vector3> &p_points, const Transform3D &p_to_local, real_t p_radius, int p_sides, int p_caps, real_t p_uv_repeat) {
+void Rope3DTube::update(const Vector<Vector3> &p_points, const Transform3D &p_to_local, real_t p_radius, int p_sides, int p_caps, real_t p_uv_repeat, const Vector<real_t> &p_radii) {
+	ERR_FAIL_COND(!p_radii.is_empty() && p_radii.size() != p_points.size());
 	bool mirror = p_to_local.basis.determinant() < 0;
 	if (count != p_points.size() || sides != p_sides || caps != p_caps || mirrored != mirror) {
 		topology(p_points.size(), p_sides, p_caps, mirror);
@@ -139,21 +140,30 @@ void Rope3DTube::update(const Vector<Vector3> &p_points, const Transform3D &p_to
 	AABB current;
 	for (int i = 0; i < layout.size(); i++) {
 		const Vertex &v = layout[i];
+		real_t radius = p_radii.is_empty() ? p_radius : p_radii[v.point];
 		Vector3 radial = frames[v.point] * Math::cos(v.angle) + tangents[v.point].cross(frames[v.point]) * Math::sin(v.angle);
 		Vector3 normal = radial;
-		Vector3 offset = radial * p_radius;
+		Vector3 offset = radial * radius;
+		if (!p_radii.is_empty()) {
+			int previous = MAX(0, v.point - 1);
+			int next = MIN(count - 1, v.point + 1);
+			real_t span = distances[next] - distances[previous];
+			if (span > CMP_EPSILON) {
+				normal = (radial - tangents[v.point] * ((p_radii[next] - p_radii[previous]) / span)).normalized();
+			}
+		}
 		if (v.cap != 0) {
 			if (caps == 1) {
 				normal = tangents[v.point] * v.cap;
 				offset = v.latitude == 0 ? offset : Vector3();
 			} else {
 				normal = radial * Math::cos(v.latitude) + tangents[v.point] * (v.cap * Math::sin(v.latitude));
-				offset = normal * p_radius;
+				offset = normal * radius;
 			}
 		}
 		vertices.write[i] = p_to_local.xform(p_points[v.point] + offset);
 		normals.write[i] = normal_to_local.xform(normal).normalized();
-		uvs.write[i] = Vector2(v.angle / Math::TAU, (distances[v.point] + (caps == 2 ? v.cap * p_radius * Math::sin(v.latitude) : 0)) / p_uv_repeat);
+		uvs.write[i] = Vector2(v.angle / Math::TAU, (distances[v.point] + (caps == 2 ? v.cap * radius * Math::sin(v.latitude) : 0)) / p_uv_repeat);
 		if (i == 0) {
 			current.position = vertices[i];
 		} else {

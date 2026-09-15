@@ -203,6 +203,46 @@ TEST_CASE("[SceneTree][Arm3D] Roundness only changes mesh, stable topology and b
 	}
 }
 
+TEST_CASE("[SceneTree][Arm3D] Independent radii preserve joints and cap sizes") {
+	Fixture f;
+	Vector<Vector3> joints = f.arm->get_joint_positions();
+	f.arm->set_upper_arm_radius(0.12);
+	f.arm->set_forearm_radius(0.035);
+	CHECK(f.arm->get_joint_positions() == joints);
+	for (real_t roundness : { real_t(0), real_t(0.6) }) {
+		f.arm->set_elbow_roundness(roundness);
+		f.arm->set_radial_segments(roundness == 0 ? 13 : 12);
+		Vector<Vector3> centerline = f.arm->get_render_points();
+		Array arrays = f.arm->get_mesh()->surface_get_arrays(0);
+		Vector<Vector3> vertices = arrays[Mesh::ARRAY_VERTEX];
+		Vector<Vector3> normals = arrays[Mesh::ARRAY_NORMAL];
+		int stride = f.arm->get_radial_segments() + 1;
+		for (int side = 0; side < stride; side++) {
+			CHECK(vertices[side].distance_to(centerline[0]) == doctest::Approx(0.12));
+			CHECK(vertices[(centerline.size() - 1) * stride + side].distance_to(centerline[centerline.size() - 1]) == doctest::Approx(0.035));
+		}
+		for (int i = 0; i < vertices.size(); i++) {
+			CHECK(vertices[i].is_finite());
+			CHECK(normals[i].length() == doctest::Approx(1).epsilon(0.001));
+			CHECK(f.arm->get_aabb().grow(0.0001).has_point(vertices[i]));
+		}
+		Vector<int> indices = arrays[Mesh::ARRAY_INDEX];
+		f.arm->set_forearm_radius(0.04);
+		CHECK(Vector<int>(f.arm->get_mesh()->surface_get_arrays(0)[Mesh::ARRAY_INDEX]) == indices);
+		CHECK(f.arm->get_joint_positions() == joints);
+		f.arm->set_forearm_radius(0.035);
+	}
+	f.arm->set("radius", 0.09);
+	CHECK(f.arm->get_upper_arm_radius() == doctest::Approx(0.09));
+	CHECK(f.arm->get_forearm_radius() == doctest::Approx(0.09));
+	ERR_PRINT_OFF;
+	f.arm->set_upper_arm_radius(-1);
+	f.arm->set_forearm_radius(Math::NaN);
+	ERR_PRINT_ON;
+	CHECK(f.arm->get_upper_arm_radius() == doctest::Approx(0.09));
+	CHECK(f.arm->get_forearm_radius() == doctest::Approx(0.09));
+}
+
 TEST_CASE("[SceneTree][Arm3D] Elbow impulse, stiffness and reset") {
 	Fixture f;
 	f.arm->set_gravity(Vector3());
@@ -234,6 +274,8 @@ TEST_CASE("[SceneTree][Arm3D] Scene serialization and focused properties") {
 	f.arm->set_name("Arm");
 	f.arm->set_upper_arm_length(0.6);
 	f.arm->set_elbow_roundness(0.4);
+	f.arm->set_upper_arm_radius(0.1);
+	f.arm->set_forearm_radius(0.04);
 	Ref<PackedScene> packed;
 	packed.instantiate();
 	CHECK(packed->pack(f.root) == OK);
@@ -244,10 +286,15 @@ TEST_CASE("[SceneTree][Arm3D] Scene serialization and focused properties") {
 	arm->reset_simulation();
 	CHECK(arm->get_upper_arm_length() == doctest::Approx(0.6));
 	CHECK(arm->get_elbow_roundness() == doctest::Approx(0.4));
+	CHECK(arm->get_upper_arm_radius() == doctest::Approx(0.1));
+	CHECK(arm->get_forearm_radius() == doctest::Approx(0.04));
 	CHECK(arm->get_joint_positions().size() == 3);
 	List<PropertyInfo> properties;
 	arm->get_property_list(&properties);
 	for (const PropertyInfo &property : properties) {
+		if (property.name == StringName("radius")) {
+			CHECK((property.usage & (PROPERTY_USAGE_EDITOR | PROPERTY_USAGE_STORAGE)) == 0);
+		}
 		CHECK_FALSE(String(property.name).begins_with("attachments/"));
 		CHECK(property.name != StringName("initial_curve"));
 		CHECK(property.name != StringName("particle_count"));

@@ -28,7 +28,6 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-
 #pragma once
 
 #include "scene/resources/mesh.h"
@@ -77,5 +76,5 @@ public:
 		first_tangent = Vector3(0, -1, 0);
 		have_bounds = false;
 	}
-	void update(const Vector<Vector3> &p_points, const Transform3D &p_to_local, real_t p_radius, int p_sides, int p_caps, real_t p_uv_repeat);
+	void update(const Vector<Vector3> &p_points, const Transform3D &p_to_local, real_t p_radius, int p_sides, int p_caps, real_t p_uv_repeat, const Vector<real_t> &p_radii = Vector<real_t>());
 };
