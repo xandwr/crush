@@ -263,6 +263,7 @@
 #include "scene/3d/reflection_probe.h"
 #include "scene/3d/remote_transform_3d.h"
 #include "scene/3d/retarget_modifier_3d.h"
+#include "scene/3d/arm_3d.h"
 #include "scene/3d/rope_3d.h"
 #include "scene/3d/skeleton_3d.h"
 #include "scene/3d/skeleton_modifier_3d.h"
@@ -643,6 +644,7 @@ void register_scene_types() {
 	GDREGISTER_CLASS(Viewmodel3D);
 	GDREGISTER_CLASS(Mirror3D);
 	GDREGISTER_CLASS(Rope3D);
+	GDREGISTER_CLASS(Arm3D);
 	GDREGISTER_CLASS(AudioListener3D);
 	GDREGISTER_CLASS(MeshInstance3D);
 #ifndef DISABLE_DEPRECATED

@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="Arm3D" inherits="GeometryInstance3D" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../class.xsd">
+	<brief_description>
+		A procedural physical arm connecting a shoulder to a hand target.
+	</brief_description>
+	<description>
+		Arm3D simulates three joints (shoulder, elbow, hand) using the same position-based solver as Rope3D. Assign two [Node3D] targets, the upper-arm and forearm lengths, and a shoulder-local elbow direction. The endpoints stay attached to their targets while the elbow responds to gravity, inertia, and its preferred pose. Use [member GeometryInstance3D.material_override] for the arm's material.
+		Lengths and radius are measured in world units; scaling Arm3D does not change them. Shoulder orientation, including reflection, rotates the preferred elbow direction. Hand orientation does not affect the arm. The editor displays the target pose without running physics. Both targets must exist and be in the scene tree; otherwise the arm is hidden and simulation is reset.
+		Endpoint positions take priority over length constraints. Beyond full reach the arm becomes straight and stretches proportionally. Closer than the difference between segment lengths, it folds back and adjusts the lengths equally. At coincident targets the elbow lies along the preferred bend direction at half the total length. These unreachable poses bypass simulation to avoid competing constraints. When the bend direction is parallel to the shoulder-to-hand axis, the previous bend direction is projected onto the new plane, with a deterministic fallback if necessary.
+		Simulation runs automatically on physics ticks, with bounded substeps and optional scene physics interpolation. Move targets before Arm3D's internal physics processing (for example, give the target controller an earlier [member Node.process_physics_priority]). After teleporting targets, call [method reset_simulation] to discard old velocities and interpolation history.
+		This node generates a tube with rounded end caps. It does not drive a skeleton, move either target, or collide with the physics world.
+	</description>
+	<tutorials />
+	<methods>
+		<method name="apply_elbow_impulse">
+			<return type="void" />
+			<param index="0" name="impulse" type="Vector3" />
+			<description>Applies a world-space impulse to the elbow. Has no effect before targets resolve or while simulation is disabled.</description>
+		</method>
+		<method name="get_dropped_simulation_time" qualifiers="const">
+			<return type="float" />
+			<description>Returns accumulated seconds discarded by the substep budget since the last reset.</description>
+		</method>
+		<method name="get_joint_positions" qualifiers="const">
+			<return type="PackedVector3Array" />
+			<description>Returns the world-space shoulder, elbow, and hand positions, in that order. Returns an empty array when the targets are unavailable.</description>
+		</method>
+		<method name="get_mesh" qualifiers="const">
+			<return type="ArrayMesh" />
+			<description>Returns the generated mesh. Treat it as read-only; Arm3D maintains its surfaces.</description>
+		</method>
+		<method name="reset_simulation">
+			<return type="void" />
+			<description>Resamples both targets, restores the preferred elbow pose, and clears velocities, dropped time, and interpolation history. Call after teleporting the character or its targets.</description>
+		</method>
+	</methods>
+	<members>
+		<member name="damping" type="float" setter="set_damping" getter="get_damping" default="12.0">Exponential velocity damping per second.</member>
+		<member name="elbow_direction" type="Vector3" setter="set_elbow_direction" getter="get_elbow_direction" default="Vector3(0, -1, 0)">Nonzero preferred bend direction in the shoulder target's local orientation. Its magnitude is ignored.</member>
+		<member name="elbow_roundness" type="float" setter="set_elbow_roundness" getter="get_elbow_roundness" default="0.0">Visual rounding from [code]0[/code] (a sharp joint) to [code]1[/code] (rounding across half of each segment). Does not add physical joints or alter simulation.</member>
+		<member name="elbow_stiffness" type="float" setter="set_elbow_stiffness" getter="get_elbow_stiffness" default="1000.0">Spring stiffness in newtons per meter toward the preferred elbow position. Higher values resist displacement more strongly. Zero disables this pose constraint; segment lengths remain constrained.</member>
+		<member name="forearm_length" type="float" setter="set_forearm_length" getter="get_forearm_length" default="0.45">Rest distance between elbow and hand, in world units.</member>
+		<member name="gravity" type="Vector3" setter="set_gravity" getter="get_gravity" default="Vector3(0, -9.8, 0)">World-space acceleration applied to the elbow.</member>
+		<member name="hand_target" type="NodePath" setter="set_hand_target" getter="get_hand_target" default="NodePath(&quot;&quot;)">Path to the [Node3D] defining the hand position. This target is not moved by Arm3D.</member>
+		<member name="max_substep_duration" type="float" setter="set_max_substep_duration" getter="get_max_substep_duration" default="0.008333334">Maximum duration of one simulation substep in seconds.</member>
+		<member name="max_substeps" type="int" setter="set_max_substeps" getter="get_max_substeps" default="8">Maximum substeps per physics tick. Excess time is discarded and reported by [method get_dropped_simulation_time].</member>
+		<member name="radial_segments" type="int" setter="set_radial_segments" getter="get_radial_segments" default="12">Number of sides around the generated tube.</member>
+		<member name="radius" type="float" setter="set_radius" getter="get_radius" default="0.065">Tube radius in world units.</member>
+		<member name="shoulder_target" type="NodePath" setter="set_shoulder_target" getter="get_shoulder_target" default="NodePath(&quot;&quot;)">Path to the [Node3D] defining the shoulder position and elbow orientation.</member>
+		<member name="simulation_enabled" type="bool" setter="set_simulation_enabled" getter="get_simulation_enabled" default="true">If disabled, follows the target pose without inertia or gravity. Target tracking and rendering remain active.</member>
+		<member name="solver_iterations" type="int" setter="set_solver_iterations" getter="get_solver_iterations" default="12">Constraint iterations per substep. More iterations improve length constraint convergence at additional CPU cost.</member>
+		<member name="stretch_compliance" type="float" setter="set_stretch_compliance" getter="get_stretch_compliance" default="0.0">Inverse stiffness of the length constraints. Zero resists stretching; larger values allow softer segments. Unreachable endpoint positions still take priority.</member>
+		<member name="total_mass" type="float" setter="set_total_mass" getter="get_total_mass" default="1.0">Total mass in kilograms, distributed half at the elbow and one quarter at each pinned endpoint.</member>
+		<member name="upper_arm_length" type="float" setter="set_upper_arm_length" getter="get_upper_arm_length" default="0.46">Rest distance between shoulder and elbow, in world units.</member>
+	</members>
+</class>
