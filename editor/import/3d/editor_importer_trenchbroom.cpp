@@ -130,6 +130,7 @@ void EditorTrenchBroomImporter::get_extensions(List<String> *r_extensions) const
 	r_extensions->push_back("map");
 }
 void EditorTrenchBroomImporter::get_import_options(const String &p_path, List<ResourceImporter::ImportOption> *r_options) {
+	r_options->push_back(ResourceImporter::ImportOption(PropertyInfo(Variant::BOOL, "trenchbroom/cull_interior_faces"), true));
 	r_options->push_back(ResourceImporter::ImportOption(PropertyInfo(Variant::INT, "trenchbroom/format", PROPERTY_HINT_ENUM, "Auto,Standard,Valve 220"), 0));
 	r_options->push_back(ResourceImporter::ImportOption(PropertyInfo(Variant::FLOAT, "trenchbroom/map_units_per_meter", PROPERTY_HINT_RANGE, "0.001,1024,0.001,or_greater"), GLOBAL_GET("trenchbroom/entities/map_units_per_meter")));
 	r_options->push_back(ResourceImporter::ImportOption(PropertyInfo(Variant::PACKED_STRING_ARRAY, "trenchbroom/entity_definitions", PROPERTY_HINT_TYPE_STRING, vformat("%d/%d:*.tres,*.res", Variant::STRING, PROPERTY_HINT_FILE)), GLOBAL_GET("trenchbroom/general/entity_definitions")));
@@ -345,6 +346,9 @@ Node *EditorTrenchBroomImporter::import_scene(const String &p_path, uint32_t p_f
 				origin = compiled.origin_center;
 			}
 			brushes.push_back(compiled);
+		}
+		if (option(p_options, "trenchbroom/cull_interior_faces", true)) {
+			Compiler::cull_interior_faces(brushes, compiler_options.tolerance * compiler_options.unit_scale);
 		}
 		Basis orientation;
 		if (entity.properties.has("angles")) {

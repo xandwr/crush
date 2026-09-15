@@ -57,6 +57,62 @@ void standard_axes(const Vector3 &p_normal, Vector3 &r_u, Vector3 &r_v) {
 }
 } // namespace
 
+void TrenchBroomBrushCompiler::cull_interior_faces(Vector<Result> &r_brushes, real_t p_tolerance) {
+	ERR_FAIL_COND(!Math::is_finite(p_tolerance) || p_tolerance <= 0);
+	Vector<Vector<Plane>> boundaries;
+	Vector<AABB> bounds;
+	for (const Result &brush : r_brushes) {
+		Vector<Plane> planes;
+		if (brush.culling_solid) {
+			for (int face = 0; face < brush.mesh->get_surface_count(); face++) {
+				Array arrays = brush.mesh->surface_get_arrays(face);
+				PackedVector3Array vertices = arrays[Mesh::ARRAY_VERTEX];
+				PackedVector3Array normals = arrays[Mesh::ARRAY_NORMAL];
+				planes.push_back(Plane(normals[0], vertices[0]));
+			}
+		}
+		boundaries.push_back(planes);
+		bounds.push_back(brush.mesh.is_valid() ? brush.mesh->get_aabb().grow(p_tolerance) : AABB());
+	}
+	for (int brush = 0; brush < r_brushes.size(); brush++) {
+		Ref<ArrayMesh> mesh = r_brushes[brush].mesh;
+		if (mesh.is_null()) {
+			continue;
+		}
+		for (int face = mesh->get_surface_count() - 1; face >= 0; face--) {
+			Array arrays = mesh->surface_get_arrays(face);
+			PackedVector3Array vertices = arrays[Mesh::ARRAY_VERTEX];
+			PackedVector3Array normals = arrays[Mesh::ARRAY_NORMAL];
+			for (int other = 0; other < r_brushes.size(); other++) {
+				if (brush == other || boundaries[other].is_empty() || !bounds[brush].intersects(bounds[other])) {
+					continue;
+				}
+				bool covered = true;
+				for (const Plane &plane : boundaries[other]) {
+					bool coplanar = true;
+					for (const Vector3 &vertex : vertices) {
+						real_t distance = plane.distance_to(vertex);
+						if (distance > p_tolerance) {
+							covered = false;
+							break;
+						}
+						coplanar &= Math::abs(distance) <= p_tolerance;
+					}
+					// Coincident outward faces remain exterior, including duplicate brushes.
+					if (!covered || (coplanar && plane.normal.dot(normals[0]) >= 0)) {
+						covered = false;
+						break;
+					}
+				}
+				if (covered) {
+					mesh->surface_remove(face);
+					break;
+				}
+			}
+		}
+	}
+}
+
 Error TrenchBroomBrushCompiler::compile(const TrenchBroomMapParser::Brush &p_brush, TrenchBroomMapParser::Format p_format, const Options &p_options, Result &r_result, TrenchBroomMapParser::Diagnostic &r_diagnostic) {
 	r_result = Result();
 	r_diagnostic = TrenchBroomMapParser::Diagnostic();
@@ -268,6 +324,7 @@ Error TrenchBroomBrushCompiler::compile(const TrenchBroomMapParser::Brush &p_bru
 		result.mesh->surface_set_material(result.mesh->get_surface_count() - 1, material.material);
 	}
 	Vector<Vector3> collision_points;
+	result.culling_solid = result.mesh->get_surface_count() == polygons.size();
 	for (const Vector3 &vertex : vertices) {
 		collision_points.push_back(convert_point(vertex, p_options.unit_scale));
 	}

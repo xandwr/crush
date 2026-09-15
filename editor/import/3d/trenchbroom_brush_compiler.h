@@ -47,6 +47,7 @@ public:
 		HashMap<String, MaterialInfo> materials;
 	};
 	struct Result {
+		bool culling_solid = false;
 		bool origin = false;
 		Vector3 origin_center;
 		Ref<ArrayMesh> mesh;
@@ -58,4 +59,7 @@ public:
 	// Coordinates convert from map (X, Y, Z) to Godot (Y, Z, X), matching
 	// existing Godot TrenchBroom projects.
 	static Error compile(const TrenchBroomMapParser::Brush &p_brush, TrenchBroomMapParser::Format p_format, const Options &p_options, Result &r_result, TrenchBroomMapParser::Diagnostic &r_diagnostic);
+	// Only complete faces covered by another fully rendered brush are removed.
+	// Call once per entity, using compiled-unit tolerance. Collision is unchanged.
+	static void cull_interior_faces(Vector<Result> &r_brushes, real_t p_tolerance);
 };
