@@ -61,6 +61,11 @@ func run() -> void:
 	image.save_png("res://assets/textures/skyboxes/sky.png")
 	ProjectSettings.set_setting("application/config/icon", "res://icon.png")
 	ProjectSettings.set_setting("trenchbroom/general/texture_source_directories", PackedStringArray(["res://source_a", "res://source_b"]))
+	ProjectSettings.set_setting("trenchbroom/general/materials_output_directory", "res://materials")
+	DirAccess.make_dir_recursive_absolute("res://materials/metal")
+	var authored_material := StandardMaterial3D.new()
+	authored_material.metallic = 0.75
+	check(ResourceSaver.save(authored_material, "res://materials/metal/red.res") == OK, "Authored material saved")
 	var scene := PackedScene.new()
 	var source := Node3D.new()
 	check(scene.pack(source) == OK, "Scene packed")
@@ -78,6 +83,9 @@ func run() -> void:
 	definition.enum_properties = [team]
 	check(ResourceSaver.save(definition, "res://entity.tres") == OK, "Definition saved")
 	ProjectSettings.set_setting("trenchbroom/general/entity_definitions", PackedStringArray(["res://entity.tres"]))
+	var filesystem := EditorInterface.get_resource_filesystem()
+	filesystem.scan()
+	await filesystem.resources_reimported
 	var result: Dictionary = exporter.export_game_config(export_root)
 	check(result.success, str(result))
 	var directory: String = result.directory
@@ -99,6 +107,14 @@ func run() -> void:
 	check(config.materials.excludes.size() == 9, "Default exclusions exported")
 	check(FileAccess.file_exists(texture_directory.path_join("stone/red.png")), "First texture copied")
 	check(FileAccess.file_exists(texture_directory.path_join("metal/red.png")), "Second texture copied")
+	check(FileAccess.file_exists("res://materials/stone/red.tres"), "Missing material generated")
+	var generated_material := ResourceLoader.load("res://materials/stone/red.tres", "", ResourceLoader.CACHE_MODE_IGNORE) as StandardMaterial3D
+	check(generated_material != null, "Generated material loads")
+	check(generated_material.albedo_texture.resource_path == "res://source_a/stone/red.png", "Generated material uses source texture")
+	check(generated_material.texture_filter == BaseMaterial3D.TEXTURE_FILTER_NEAREST_WITH_MIPMAPS, "Generated material uses nearest mipmap filtering")
+	check(not FileAccess.file_exists("res://materials/metal/red.tres"), "Alternate authored material format prevents duplicate generation")
+	var preserved_material := ResourceLoader.load("res://materials/metal/red.res", "", ResourceLoader.CACHE_MODE_IGNORE) as StandardMaterial3D
+	check(is_equal_approx(preserved_material.metallic, 0.75), "Authored material preserved")
 	check(Image.load_from_file(directory.path_join("icon.png")).get_size() == Vector2i(32, 32), "Icon resized")
 	var fgd := FileAccess.get_file_as_string(directory.path_join("Entities.fgd"))
 	check(fgd.contains("@PointClass size(-16.0 -16.0 -16.0, 16.0 16.0 16.0)"), "Box uses map units")

@@ -3561,8 +3561,7 @@
 			Optional project image for the TrenchBroom game icon. If empty, uses [member application/config/icon]. Export converts the image to a 32 by 32 PNG. If both paths are empty, no icon is exported.
 		</member>
 		<member name="trenchbroom/general/materials_output_directory" type="String" setter="" getter="" default="&quot;&quot;">
-			Project directory intended to receive generated Godot materials. An empty value leaves the output directory unconfigured.
-			[b]Note:[/b] This setting is reserved for future material generation. Exporting the TrenchBroom configuration does not generate Godot materials.
+			Project directory containing materials resolved by the native TrenchBroom map importer. Relative subfolders and material basenames must match the names used in map faces. Exporting the TrenchBroom configuration creates missing [StandardMaterial3D] resources here with the matching albedo texture and nearest mipmap filtering. Existing materials are never overwritten. An empty value disables saved material lookup and generation, and the map importer falls back to equivalent in-memory materials from matching textures.
 		</member>
 		<member name="trenchbroom/general/texture_source_directories" type="PackedStringArray" setter="" getter="" default="PackedStringArray()">
 			Project directories whose images are copied into the exported TrenchBroom texture catalog. Relative subfolders are preserved and merged. Duplicate material names, ignoring case and file extension, fail export rather than silently overwrite a texture. Hidden subdirectories are skipped, and linked subdirectories are rejected.

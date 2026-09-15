@@ -293,6 +293,7 @@ Node *EditorTrenchBroomImporter::import_scene(const String &p_path, uint32_t p_f
 					Ref<StandardMaterial3D> material;
 					material.instantiate();
 					material->set_texture(BaseMaterial3D::TEXTURE_ALBEDO, texture);
+					material->set_texture_filter(BaseMaterial3D::TEXTURE_FILTER_NEAREST_WITH_MIPMAPS);
 					material->set_name(face.material);
 					info.material = material;
 					info.texture_size = texture->get_size();

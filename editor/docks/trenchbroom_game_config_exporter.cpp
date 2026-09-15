@@ -38,9 +38,12 @@
 #include "core/io/image.h"
 #include "core/io/json.h"
 #include "core/io/resource_loader.h"
+#include "core/io/resource_saver.h"
 #include "core/object/class_db.h"
 #include "core/os/os.h"
 #include "scene/resources/entity_definition.h"
+#include "scene/resources/material.h"
+#include "scene/resources/texture.h"
 
 namespace {
 
@@ -175,6 +178,41 @@ String build_tags(const Array &p_tags, bool p_brush, int p_version, Array &r_tag
 			}
 		}
 		r_tags.push_back(tag);
+	}
+	return String();
+}
+
+String generate_missing_materials(const String &p_material_root, const HashMap<String, String> &p_textures, int &r_generated_count) {
+	if (p_material_root.is_empty()) {
+		return String();
+	}
+	if (!valid_project_path(p_material_root)) {
+		return vformat("The materials output directory must be a project directory: %s", p_material_root);
+	}
+	for (const KeyValue<String, String> &texture_entry : p_textures) {
+		String material_base = p_material_root.path_join(texture_entry.key);
+		String material_path = material_base + ".tres";
+		if (FileAccess::exists(material_path) || FileAccess::exists(material_base + ".res")) {
+			continue;
+		}
+		Ref<Texture2D> texture = ResourceLoader::load(ProjectSettings::get_singleton()->localize_path(texture_entry.value));
+		if (texture.is_null()) {
+			return vformat("Cannot load texture while generating material: %s", texture_entry.value);
+		}
+		Error error = DirAccess::make_dir_recursive_absolute(ProjectSettings::get_singleton()->globalize_path(material_path.get_base_dir()));
+		if (error != OK) {
+			return vformat("Cannot create material directory: %s", material_path.get_base_dir());
+		}
+		Ref<StandardMaterial3D> material;
+		material.instantiate();
+		material->set_name(texture_entry.key.get_file());
+		material->set_texture(BaseMaterial3D::TEXTURE_ALBEDO, texture);
+		material->set_texture_filter(BaseMaterial3D::TEXTURE_FILTER_NEAREST_WITH_MIPMAPS);
+		error = ResourceSaver::save(material, material_path);
+		if (error != OK) {
+			return vformat("Cannot generate material: %s", material_path);
+		}
+		r_generated_count++;
 	}
 	return String();
 }
@@ -435,7 +473,10 @@ Dictionary TrenchBroomGameConfigExporter::export_game_config(const String &p_par
 		if (!valid_project_path(icon_path) || !FileAccess::exists(icon_path)) {
 			return failure(vformat("Icon must be an existing project image: %s", icon_path));
 		}
-		icon = Image::load_from_file(icon_path);
+		Ref<Texture2D> icon_texture = ResourceLoader::load(icon_path);
+		if (icon_texture.is_valid()) {
+			icon = icon_texture->get_image();
+		}
 		if (icon.is_null() || icon->is_empty()) {
 			return failure(vformat("Cannot load icon image: %s", icon_path));
 		}
@@ -525,6 +566,12 @@ Dictionary TrenchBroomGameConfigExporter::export_game_config(const String &p_par
 		cleanup_staging();
 		return failure("Failed to write game configuration files. Previous export preserved.");
 	}
+	int generated_material_count = 0;
+	String material_error = generate_missing_materials(GLOBAL_GET("trenchbroom/general/materials_output_directory"), material_names, generated_material_count);
+	if (!material_error.is_empty()) {
+		cleanup_staging();
+		return failure(material_error + " Previous export preserved.");
+	}
 	for (int i = 0; i < destinations.size(); i++) {
 		bool backed_up = false;
 		if (replacing[i]) {
@@ -558,7 +605,7 @@ Dictionary TrenchBroomGameConfigExporter::export_game_config(const String &p_par
 	result["success"] = true;
 	result["directory"] = destination;
 	result["game_path"] = project_path();
-	result["message"] = vformat("Exported %d entities and %d textures.\nTrenchBroom game: %s\nGame Path (Godot project folder):\n%s%s", definitions.size(), material_names.size() + 3, game_name(), project_path(), cleanup_warning);
+	result["message"] = vformat("Exported %d entities and %d textures. Generated %d missing materials.\nTrenchBroom game: %s\nGame Path (Godot project folder):\n%s%s", definitions.size(), material_names.size() + 3, generated_material_count, game_name(), project_path(), cleanup_warning);
 	return result;
 }
 

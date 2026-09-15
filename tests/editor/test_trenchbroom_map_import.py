@@ -29,6 +29,11 @@ func run() -> void:
 	var world_mesh: MeshInstance3D = scene.get_node("World_0/Brush_0/Mesh")
 	check(world_mesh.mesh.get_surface_count() == 6, "Six brush faces")
 	check(world_mesh.mesh.surface_get_material(0).resource_path == "res://materials/stone.tres", "Configured material overrides texture")
+	var fallback: PackedScene = load("res://fallback.map")
+	var fallback_scene := fallback.instantiate()
+	var fallback_material := fallback_scene.get_node("World_0/Brush_0/Mesh").mesh.surface_get_material(0) as StandardMaterial3D
+	check(fallback_material.texture_filter == BaseMaterial3D.TEXTURE_FILTER_NEAREST_WITH_MIPMAPS, "Texture fallback uses nearest mipmap filtering")
+	fallback_scene.free()
 	var arrays := world_mesh.mesh.surface_get_arrays(0)
 	check(arrays[Mesh.ARRAY_TANGENT].size() == 16, "Tangents generated through scene pipeline")
 	var positions: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
@@ -213,6 +218,7 @@ def main():
         (project / "textures").mkdir()
         (project / "materials").mkdir()
         (project / "textures/stone.png").write_bytes(png(2, 4))
+        (project / "textures/fallback.png").write_bytes(png(2, 4))
         (project / "materials/stone.tres").write_text(
             '[gd_resource type="StandardMaterial3D" load_steps=2 format=3]\n[ext_resource type="Texture2D" path="res://textures/stone.png" id="1"]\n[resource]\nalbedo_texture=ExtResource("1")\n',
             encoding="utf-8",
@@ -237,6 +243,9 @@ def main():
             + "\n}\n}\n"
         )
         (project / "standard.map").write_text(source, encoding="utf-8")
+        (project / "fallback.map").write_text(
+            '{\n"classname" "worldspawn"\n{\n' + BRUSH.replace("stone", "fallback") + "\n}\n}\n", encoding="utf-8"
+        )
         special_brushes = [BRUSH.replace("stone", "CLIP", 1), BRUSH.replace("stone", "skip", 1), BRUSH.replace("stone", "skip")]
         special = '{\n"classname" "worldspawn"\n' + "".join("{\n" + brush + "\n}\n" for brush in special_brushes) + '}\n'
         special += '{\n"classname" "func_detail"\n"origin" "200 300 400"\n"angle" "90"\n{\n' + BRUSH + '\n}\n{\n' + BRUSH.replace("stone", "origin") + '\n}\n}\n'
