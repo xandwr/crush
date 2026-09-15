@@ -8,10 +8,13 @@
 		Lengths and radius are measured in world units; scaling Arm3D does not change them. Shoulder orientation, including reflection, rotates the preferred elbow direction. Hand orientation does not affect the arm. The editor displays the target pose without running physics. The shoulder target and any enabled hand target must exist and be in the scene tree; otherwise the arm is hidden and simulation is reset. Disable [member hand_target_enabled] to let the elbow and hand swing freely under gravity, with only the shoulder pinned. This ignores the preferred elbow pose and initializes the arm at full length along gravity (world down when gravity is zero).
 		The hand target is clamped to the reachable distance range, from the difference between segment lengths to their sum. Beyond full reach the arm becomes straight without growing. Targets too close to the shoulder produce a fully folded arm while preserving both segment lengths. The target node itself is never moved. At coincident targets, unequal lengths use the shoulder forward direction to choose the nearest reachable hand position; equal lengths fold along the elbow direction. These boundary poses bypass simulation to avoid competing constraints. When the bend direction is parallel to the shoulder-to-hand axis, the previous bend direction is projected onto the new plane, with a deterministic fallback if necessary.
 		Simulation runs automatically on physics ticks, with bounded substeps and optional scene physics interpolation. Move targets before Arm3D's internal physics processing (for example, give the target controller an earlier [member Node.process_physics_priority]). After teleporting targets, call [method reset_simulation] to discard old velocities and interpolation history.
-		This node generates a tube with rounded end caps. It does not drive a skeleton, move either target, or collide with the physics world.
+		This node generates a tube with rounded end caps. It does not drive a skeleton, move either target, or push physics bodies. Optional collision resolves unpinned joint spheres against bodies on the selected physics layers; the segments between joints do not have continuous collision. Disabled simulation and boundary reach poses bypass collision.
 	</description>
 	<tutorials />
 	<methods>
+		<method name="clear_collision_exceptions"><return type="void" /><description>Clears all excluded physics body RIDs.</description></method>
+		<method name="remove_collision_exception"><return type="void" /><param index="0" name="rid" type="RID" /><description>Removes a previously excluded physics body RID.</description></method>
+		<method name="add_collision_exception"><return type="void" /><param index="0" name="rid" type="RID" /><description>Excludes a physics body RID, for example the owning character.</description></method>
 		<method name="apply_elbow_impulse">
 			<return type="void" />
 			<param index="0" name="impulse" type="Vector3" />
@@ -35,6 +38,9 @@
 		</method>
 	</methods>
 	<members>
+		<member name="collision_enabled" type="bool" setter="set_collision_enabled" getter="get_collision_enabled" default="false">Enables one-way collision for simulated, unpinned joints.</member>
+		<member name="collision_mask" type="int" setter="set_collision_mask" getter="get_collision_mask" default="1">Physics layers queried by the joint spheres. Select any combination of the 32 physics layers.</member>
+		<member name="collision_radius" type="float" setter="set_collision_radius" getter="get_collision_radius" default="0.065">Collision sphere radius in world units, independent of visual radii.</member>
 		<member name="damping" type="float" setter="set_damping" getter="get_damping" default="12.0">Exponential velocity damping per second.</member>
 		<member name="elbow_direction" type="Vector3" setter="set_elbow_direction" getter="get_elbow_direction" default="Vector3(0, -1, 0)">Nonzero preferred bend direction in the shoulder target's local orientation. Its magnitude is ignored.</member>
 		<member name="elbow_roundness" type="float" setter="set_elbow_roundness" getter="get_elbow_roundness" default="0.0">Visual rounding from [code]0[/code] (a sharp joint) to [code]1[/code] (rounding across half of each segment). Does not add physical joints or alter simulation.</member>

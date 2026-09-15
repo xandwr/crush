@@ -37,6 +37,12 @@
 class Arm3D : public GeometryInstance3D {
 	GDCLASS(Arm3D, GeometryInstance3D);
 
+	bool collision_enabled = false;
+	uint32_t collision_mask = 1;
+	real_t collision_radius = 0.065;
+	HashSet<RID> collision_exceptions;
+	RID collision_shape;
+	void _collide();
 	Rope3DSolver solver;
 	Rope3DTube tube;
 	Vector<Vector3> previous_points;
@@ -129,6 +135,15 @@ public:
 	void set_max_substeps(int p_value);
 	int get_max_substeps() const { return max_substeps; }
 
+	void set_collision_enabled(bool p_value) { collision_enabled = p_value; }
+	bool get_collision_enabled() const { return collision_enabled; }
+	void set_collision_mask(uint32_t p_value) { collision_mask = p_value; }
+	uint32_t get_collision_mask() const { return collision_mask; }
+	void set_collision_radius(real_t p_value);
+	real_t get_collision_radius() const { return collision_radius; }
+	void add_collision_exception(RID p_rid) { collision_exceptions.insert(p_rid); }
+	void remove_collision_exception(RID p_rid) { collision_exceptions.erase(p_rid); }
+	void clear_collision_exceptions() { collision_exceptions.clear(); }
 	void reset_simulation();
 	void apply_elbow_impulse(Vector3 p_impulse);
 	Vector<Vector3> get_joint_positions() const;

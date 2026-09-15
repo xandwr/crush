@@ -1,0 +1,8 @@
+config_version=5
+[application]
+config/name="Arm3D collision regression"
+[rendering]
+renderer/rendering_method="gl_compatibility"
+
+[physics]
+3d/physics_engine="Jolt Physics"

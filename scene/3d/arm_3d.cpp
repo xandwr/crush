@@ -33,6 +33,10 @@
 #include "core/config/engine.h"
 #include "core/object/class_db.h"
 #include "scene/main/scene_tree.h"
+#ifndef PHYSICS_3D_DISABLED
+#include "scene/resources/3d/world_3d.h"
+#include "servers/physics_3d/physics_server_3d.h"
+#endif
 
 Arm3D::Arm3D() {
 	set_physics_interpolation_mode(PHYSICS_INTERPOLATION_MODE_OFF);
@@ -41,6 +45,11 @@ Arm3D::Arm3D() {
 }
 
 Arm3D::~Arm3D() {
+#ifndef PHYSICS_3D_DISABLED
+	if (collision_shape.is_valid()) {
+		PhysicsServer3D::get_singleton()->free_rid(collision_shape);
+	}
+#endif
 	set_base(RID());
 }
 
@@ -183,10 +192,75 @@ void Arm3D::_advance(real_t p_delta) {
 		solver.predict(dt);
 		for (int iteration = 0; iteration < solver_iterations; iteration++) {
 			solver.project(dt, iteration % 2 != 0);
+			if (collision_enabled) {
+				_collide();
+			}
 		}
 		solver.finish(dt);
 	}
 	target_points = points;
+}
+
+void Arm3D::set_collision_radius(real_t p_value) {
+	ERR_FAIL_COND(!Math::is_finite(p_value) || p_value <= 0);
+	collision_radius = p_value;
+#ifndef PHYSICS_3D_DISABLED
+	if (collision_shape.is_valid()) {
+		PhysicsServer3D::get_singleton()->shape_set_data(collision_shape, collision_radius);
+	}
+#endif
+}
+
+void Arm3D::_collide() {
+#ifndef PHYSICS_3D_DISABLED
+	PhysicsDirectSpaceState3D *space = get_world_3d()->get_direct_space_state();
+	if (!space) {
+		return;
+	}
+	if (!collision_shape.is_valid()) {
+		collision_shape = PhysicsServer3D::get_singleton()->sphere_shape_create();
+		PhysicsServer3D::get_singleton()->shape_set_data(collision_shape, collision_radius);
+	}
+	PhysicsDirectSpaceState3D::ShapeParameters query;
+	query.shape_rid = collision_shape;
+	query.collision_mask = collision_mask;
+	query.exclude = collision_exceptions;
+	query.margin = 0.001;
+	for (int i = 0; i < solver.particles.size(); i++) {
+		if (solver.weight(i) == 0) {
+			continue;
+		}
+		Rope3DSolver::Particle &particle = solver.particles.write[i];
+		query.transform = Transform3D(Basis(), particle.previous);
+		query.motion = particle.position - particle.previous;
+		if (!query.motion.is_zero_approx()) {
+			real_t safe = 1, unsafe = 1;
+			if (space->cast_motion(query, safe, unsafe) && safe < 1) {
+				particle.position = particle.previous + query.motion * safe;
+			}
+		}
+		query.motion = Vector3();
+		for (int recovery = 0; recovery < 3; recovery++) {
+			query.transform.origin = particle.position;
+			Vector3 contacts[8];
+			int count = 0;
+			if (!space->collide_shape(query, contacts, 4, count) || count == 0) {
+				break;
+			}
+			Vector3 separation;
+			for (int contact = 0; contact < count; contact++) {
+				Vector3 depth = contacts[contact * 2 + 1] - contacts[contact * 2];
+				if (depth.is_finite() && depth.length_squared() > separation.length_squared()) {
+					separation = depth;
+				}
+			}
+			if (separation.is_zero_approx()) {
+				break;
+			}
+			particle.position += separation + separation.normalized() * query.margin;
+		}
+	}
+#endif
 }
 
 void Arm3D::_render(bool p_interpolate) {
@@ -592,6 +666,19 @@ void Arm3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_stretch_compliance", "value"), &Arm3D::set_stretch_compliance);
 	ClassDB::bind_method(D_METHOD("get_stretch_compliance"), &Arm3D::get_stretch_compliance);
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "stretch_compliance", PROPERTY_HINT_RANGE, "0,1,0.00001,or_greater"), "set_stretch_compliance", "get_stretch_compliance");
+	ADD_GROUP("Collision", "collision_");
+	ClassDB::bind_method(D_METHOD("set_collision_enabled", "value"), &Arm3D::set_collision_enabled);
+	ClassDB::bind_method(D_METHOD("get_collision_enabled"), &Arm3D::get_collision_enabled);
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "collision_enabled"), "set_collision_enabled", "get_collision_enabled");
+	ClassDB::bind_method(D_METHOD("set_collision_mask", "value"), &Arm3D::set_collision_mask);
+	ClassDB::bind_method(D_METHOD("get_collision_mask"), &Arm3D::get_collision_mask);
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "collision_mask", PROPERTY_HINT_LAYERS_3D_PHYSICS), "set_collision_mask", "get_collision_mask");
+	ClassDB::bind_method(D_METHOD("set_collision_radius", "value"), &Arm3D::set_collision_radius);
+	ClassDB::bind_method(D_METHOD("get_collision_radius"), &Arm3D::get_collision_radius);
+	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "collision_radius", PROPERTY_HINT_RANGE, "0.00001,10,0.001,or_greater"), "set_collision_radius", "get_collision_radius");
+	ClassDB::bind_method(D_METHOD("add_collision_exception", "rid"), &Arm3D::add_collision_exception);
+	ClassDB::bind_method(D_METHOD("remove_collision_exception", "rid"), &Arm3D::remove_collision_exception);
+	ClassDB::bind_method(D_METHOD("clear_collision_exceptions"), &Arm3D::clear_collision_exceptions);
 	ADD_GROUP("Appearance", "");
 	ClassDB::bind_method(D_METHOD("set_radius", "value"), &Arm3D::set_radius);
 	ClassDB::bind_method(D_METHOD("get_radius"), &Arm3D::get_radius);
