@@ -270,7 +270,7 @@ Node *EditorTrenchBroomImporter::import_scene(const String &p_path, uint32_t p_f
 	for (const auto &entity : map.entities) {
 		for (const auto &brush : entity.brushes) {
 			for (const auto &face : brush.faces) {
-				if (compiler_options.materials.has(face.material)) {
+				if (compiler_options.materials.has(face.material) || PackedStringArray({ "clip", "skip", "origin" }).has(face.material.to_lower())) {
 					continue;
 				}
 				Compiler::MaterialInfo info;
@@ -328,6 +328,23 @@ Node *EditorTrenchBroomImporter::import_scene(const String &p_path, uint32_t p_f
 		Vector3 origin;
 		if (entity.properties.has("origin") && !read_numbers(entity.properties["origin"], 3, origin)) {
 			return fail(ERR_INVALID_DATA, "Invalid entity origin.", entity.line);
+		}
+		Vector<Compiler::Result> brushes;
+		bool has_origin_brush = false;
+		for (const auto &brush : entity.brushes) {
+			Compiler::Result compiled;
+			error = Compiler::compile(brush, map.format, compiler_options, compiled, diagnostic);
+			if (error != OK) {
+				return fail(error, diagnostic.message, diagnostic.line);
+			}
+			if (compiled.origin) {
+				if (classname == "worldspawn" || has_origin_brush) {
+					return fail(ERR_INVALID_DATA, "Origin brushes require a non-world entity and must be unique per entity.", brush.line);
+				}
+				has_origin_brush = true;
+				origin = compiled.origin_center;
+			}
+			brushes.push_back(compiled);
 		}
 		Basis orientation;
 		if (entity.properties.has("angles")) {
@@ -408,10 +425,9 @@ Node *EditorTrenchBroomImporter::import_scene(const String &p_path, uint32_t p_f
 		placement->set_basis(orientation);
 		attach(root, placement, root);
 		for (int j = 0; j < entity.brushes.size(); j++) {
-			Compiler::Result compiled;
-			error = Compiler::compile(entity.brushes[j], map.format, compiler_options, compiled, diagnostic);
-			if (error != OK) {
-				return fail(error, diagnostic.message, diagnostic.line);
+			const Compiler::Result &compiled = brushes[j];
+			if (compiled.origin) {
+				continue;
 			}
 			Node3D *brush_node = memnew(Node3D);
 			brush_node->set_name(vformat("Brush_%d", j));
@@ -430,10 +446,12 @@ Node *EditorTrenchBroomImporter::import_scene(const String &p_path, uint32_t p_f
 				}
 				import_mesh->add_surface(Mesh::PRIMITIVE_TRIANGLES, arrays, TypedArray<Array>(), Dictionary(), compiled.mesh->surface_get_material(surface), compiled.mesh->surface_get_name(surface), p_flags & IMPORT_FORCE_DISABLE_MESH_COMPRESSION ? 0 : Mesh::ARRAY_FLAG_COMPRESS_ATTRIBUTES);
 			}
-			ImporterMeshInstance3D *mesh = memnew(ImporterMeshInstance3D);
-			mesh->set_name("Mesh");
-			mesh->set_mesh(import_mesh);
-			attach(brush_node, mesh, root);
+			if (compiled.mesh->get_surface_count() > 0) {
+				ImporterMeshInstance3D *mesh = memnew(ImporterMeshInstance3D);
+				mesh->set_name("Mesh");
+				mesh->set_mesh(import_mesh);
+				attach(brush_node, mesh, root);
+			}
 			StaticBody3D *body = memnew(StaticBody3D);
 			body->set_name("Body");
 			attach(brush_node, body, root);

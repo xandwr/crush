@@ -192,10 +192,34 @@ Error TrenchBroomBrushCompiler::compile(const TrenchBroomMapParser::Brush &p_bru
 	if (!Math::is_finite(volume) || volume <= Math::pow(p_options.tolerance, 3)) {
 		return fail("Brush has degenerate volume.", p_brush.line);
 	}
+	bool clip = false;
+	bool origin = false;
+	for (const auto &face : p_brush.faces) {
+		String name = face.material.to_lower();
+		clip |= name == "clip";
+		origin |= name == "origin";
+	}
+	if (origin) {
+		for (const auto &face : p_brush.faces) {
+			if (face.material.to_lower() != "origin") {
+				return fail("Origin brushes must use origin on every face.", face.line);
+			}
+		}
+		AABB bounds(vertices[0], Vector3());
+		for (const Vector3 &vertex : vertices) {
+			bounds.expand_to(vertex);
+		}
+		r_result.origin = true;
+		r_result.origin_center = bounds.get_center();
+		return OK;
+	}
 	Result result;
 	result.mesh.instantiate();
 	for (int i = 0; i < polygons.size(); i++) {
 		const auto &face = p_brush.faces[i];
+		if (clip || face.material.to_lower() == "skip") {
+			continue;
+		}
 		MaterialInfo material;
 		if (const MaterialInfo *found = p_options.materials.getptr(face.material)) {
 			material = *found;
@@ -240,8 +264,8 @@ Error TrenchBroomBrushCompiler::compile(const TrenchBroomMapParser::Brush &p_bru
 		arrays[Mesh::ARRAY_TEX_UV] = uvs;
 		arrays[Mesh::ARRAY_INDEX] = indices;
 		result.mesh->add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, arrays);
-		result.mesh->surface_set_name(i, face.material);
-		result.mesh->surface_set_material(i, material.material);
+		result.mesh->surface_set_name(result.mesh->get_surface_count() - 1, face.material);
+		result.mesh->surface_set_material(result.mesh->get_surface_count() - 1, material.material);
 	}
 	Vector<Vector3> collision_points;
 	for (const Vector3 &vertex : vertices) {

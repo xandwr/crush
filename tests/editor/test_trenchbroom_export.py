@@ -209,7 +209,15 @@ def main():
         (addon / "plugin.cfg").write_text(
             '[plugin]\nname="Export Test"\ndescription=""\nauthor=""\nversion="1"\nscript="test.gd"\n', encoding="utf-8"
         )
-        (addon / "test.gd").write_text(SCRIPT, encoding="utf-8")
+        import hashlib
+
+        checks = ""
+        for name in ("clip", "skip", "origin"):
+            asset = Path(__file__).resolve().parents[2] / "editor/docks/trenchbroom_textures" / (name + ".png")
+            digest = hashlib.sha256(asset.read_bytes()).hexdigest()
+            checks += '\tcheck(FileAccess.get_sha256("res://.godot/trenchbroom/assets/textures/' + name + '.png") == "' + digest + '", "Exact bundled ' + name + ' texture")\n'
+        script = SCRIPT.replace('\tprint("TrenchBroom export checks passed")', checks + '\tprint("TrenchBroom export checks passed")')
+        (addon / "test.gd").write_text(script, encoding="utf-8")
         result = subprocess.run(
             [str(args.engine.resolve()), "--headless", "--editor", "--path", directory],
             capture_output=True,

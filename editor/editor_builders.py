@@ -152,3 +152,12 @@ struct EditorTranslationList {{
 
 extern const EditorTranslationList _{category}_translations[];
 """)
+
+
+def make_trenchbroom_textures(target, source, env):
+    with methods.generated_wrapper(str(target[0])) as file:
+        for asset in source:
+            name = os.path.basename(str(asset)).split(".")[0]
+            with open(str(asset), "rb") as image:
+                data = image.read()
+            file.write(f"static const unsigned char trenchbroom_{name}_png[] = {{" + ",".join(str(byte) for byte in data) + "};\n")

@@ -5,6 +5,7 @@
 	</brief_description>
 	<description>
 		Editor-only helper used by the TrenchBroom dock and editor automation. Reads the project's TrenchBroom settings and generates a game configuration and FGD in a dedicated export subdirectory, and a texture catalog in the project data directory. It does not launch TrenchBroom, generate Godot materials, or import maps.
+		The texture catalog always includes the engine-bundled [code]clip.png[/code], [code]skip.png[/code], and [code]origin.png[/code] images at its root. Project textures with these reserved root names are excluded so they cannot replace the built-in images. Re-export the game configuration to refresh the catalog.
 	</description>
 	<tutorials>
 	</tutorials>

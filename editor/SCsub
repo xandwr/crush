@@ -10,6 +10,12 @@ Import("env")
 env.editor_sources = []
 
 if env.editor_build:
+    env.CommandNoCache(
+        "docks/trenchbroom_textures.gen.h",
+        Glob("docks/trenchbroom_textures/*.png"),
+        env.Run(editor_builders.make_trenchbroom_textures),
+    )
+
     # Generate doc data paths
     env.CommandNoCache(
         "doc/doc_data_class_path.gen.h",

@@ -30,6 +30,8 @@
 
 #include "trenchbroom_game_config_exporter.h"
 
+#include "trenchbroom_textures.gen.h"
+
 #include "core/config/project_settings.h"
 #include "core/io/dir_access.h"
 #include "core/io/file_access.h"
@@ -115,6 +117,9 @@ String collect_textures(const String &p_root, const String &p_relative, HashMap<
 		String source = path.path_join(entry);
 		String relative = p_relative.path_join(entry);
 		String key = relative.get_basename().to_lower();
+		if (PackedStringArray({ "clip", "skip", "origin" }).has(key)) {
+			continue;
+		}
 		if (r_material_names.has(key)) {
 			if (r_material_names[key] == source) {
 				continue;
@@ -487,6 +492,21 @@ Dictionary TrenchBroomGameConfigExporter::export_game_config(const String &p_par
 			return failure(vformat("Failed to copy %s into the export. Previous export preserved.", file.value));
 		}
 	}
+	const char *special_names[] = { "clip", "skip", "origin" };
+	const unsigned char *special_data[] = { trenchbroom_clip_png, trenchbroom_skip_png, trenchbroom_origin_png };
+	const uint64_t special_sizes[] = { sizeof(trenchbroom_clip_png), sizeof(trenchbroom_skip_png), sizeof(trenchbroom_origin_png) };
+	for (int i = 0; i < 3; i++) {
+		Ref<FileAccess> texture = FileAccess::open(asset_staging.path_join(String("textures/") + special_names[i] + ".png"), FileAccess::WRITE, &error);
+		if (texture.is_valid()) {
+			texture->store_buffer(special_data[i], special_sizes[i]);
+			texture->flush();
+			error = texture->get_error();
+		}
+		if (error != OK) {
+			cleanup_staging();
+			return failure("Failed to write built-in textures. Previous export preserved.");
+		}
+	}
 	if (icon.is_valid()) {
 		error = icon->save_png(staging.path_join("icon.png"));
 	}
@@ -538,7 +558,7 @@ Dictionary TrenchBroomGameConfigExporter::export_game_config(const String &p_par
 	result["success"] = true;
 	result["directory"] = destination;
 	result["game_path"] = project_path();
-	result["message"] = vformat("Exported %d entities and %d textures.\nTrenchBroom game: %s\nGame Path (Godot project folder):\n%s%s", definitions.size(), material_names.size(), game_name(), project_path(), cleanup_warning);
+	result["message"] = vformat("Exported %d entities and %d textures.\nTrenchBroom game: %s\nGame Path (Godot project folder):\n%s%s", definitions.size(), material_names.size() + 3, game_name(), project_path(), cleanup_warning);
 	return result;
 }
 

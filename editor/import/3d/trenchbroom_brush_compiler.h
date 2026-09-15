@@ -47,6 +47,8 @@ public:
 		HashMap<String, MaterialInfo> materials;
 	};
 	struct Result {
+		bool origin = false;
+		Vector3 origin_center;
 		Ref<ArrayMesh> mesh;
 		Ref<ConvexPolygonShape3D> collision;
 	};

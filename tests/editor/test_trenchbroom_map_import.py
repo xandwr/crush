@@ -70,6 +70,20 @@ func run() -> void:
 	var valve_scene := valve.instantiate()
 	check(valve_scene.get_node("World_0/Brush_0/Mesh").mesh.get_surface_count() == 6, "Valve geometry assembled")
 	valve_scene.free()
+	var special: PackedScene = load("res://special.map")
+	var special_scene := special.instantiate()
+	check(not special_scene.has_node("World_0/Brush_0/Mesh"), "Clip brush is invisible")
+	check(special_scene.has_node("World_0/Brush_0/Body/Collision"), "Clip brush remains solid")
+	check(special_scene.get_node("World_0/Brush_1/Mesh").mesh.get_surface_count() == 5, "Skip removes only its face")
+	check(not special_scene.has_node("World_0/Brush_2/Mesh"), "All skip brush has no mesh")
+	check(special_scene.has_node("World_0/Brush_2/Body/Collision"), "All skip brush retains collision")
+	var pivot: Node3D = special_scene.get_node("func_detail_1")
+	check(pivot.position.is_equal_approx(Vector3(0.5, 0.5, 0.5)), "Origin brush center overrides explicit origin")
+	check(not pivot.has_node("Brush_1"), "Origin marker has no geometry or collision")
+	add_child(special_scene)
+	check(pivot.get_node("Brush_0/Mesh").global_transform.is_equal_approx(Transform3D.IDENTITY), "Origin pivot preserves world geometry")
+	remove_child(special_scene)
+	special_scene.free()
 	var source := FileAccess.get_file_as_string("res://standard.map")
 	source = source.replace('"team" "2"', '"team" "1"').replace('"16 32 48"', '"128 32 48"')
 	var brush_start := source.find("{\n(") + 2
@@ -223,6 +237,10 @@ def main():
             + "\n}\n}\n"
         )
         (project / "standard.map").write_text(source, encoding="utf-8")
+        special_brushes = [BRUSH.replace("stone", "CLIP", 1), BRUSH.replace("stone", "skip", 1), BRUSH.replace("stone", "skip")]
+        special = '{\n"classname" "worldspawn"\n' + "".join("{\n" + brush + "\n}\n" for brush in special_brushes) + '}\n'
+        special += '{\n"classname" "func_detail"\n"origin" "200 300 400"\n"angle" "90"\n{\n' + BRUSH + '\n}\n{\n' + BRUSH.replace("stone", "origin") + '\n}\n}\n'
+        (project / "special.map").write_text(special, encoding="utf-8")
         axes = ["[ 1 0 0 0 ] [ 0 -1 0 0 ]"] * 2 + ["[ 1 0 0 0 ] [ 0 0 -1 0 ]"] * 2 + ["[ 0 1 0 0 ] [ 0 0 -1 0 ]"] * 2
         valve_brush = "\n".join(
             line.split("stone")[0] + "stone " + axis + " 17 1 1" for line, axis in zip(BRUSH.splitlines(), axes)
@@ -247,6 +265,8 @@ def main():
         compiled = next((project / ".godot/imported").glob("standard.map-*.scn"))
         previous = compiled.read_bytes()
         failures = [
+            (valid_source.replace("stone", "origin"), "Origin brushes require a non-world entity"),
+            (valid_source.replace("stone", "origin", 1), "Origin brushes must use origin on every face"),
             (valid_source.replace('"128 32 48"', '"broken"'), "Invalid entity origin."),
             (valid_source.replace('"team" "1"', '"team" "9999999999999999999999999"'), "Integer out of range"),
             (valid_source.replace('"team" "1"', '"team" "9"'), "Unknown value for entity property"),
