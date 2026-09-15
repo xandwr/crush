@@ -13,5 +13,8 @@
 		<member name="definition" type="EntityDefinition" setter="set_definition" getter="get_definition">
 			The definition whose [member EntityDefinition.scene] is instantiated. Clearing this property removes the generated child. Definitions without a scene create no child.
 		</member>
+		<member name="entity_properties" type="Dictionary" setter="set_entity_properties" getter="get_entity_properties" default="{}">
+			Placement values imported from a map. Declared enum properties are applied to matching properties on the generated scene root before it enters the tree, with definition defaults used for omitted keys. Other map values are retained without conversion. Changing this dictionary rebuilds the generated child.
+		</member>
 	</members>
 </class>

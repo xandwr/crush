@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  entity_3d.h                                                           */
+/*  editor_importer_trenchbroom.h                                         */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -30,32 +30,13 @@
 
 #pragma once
 
-#include "scene/3d/node_3d.h"
-#include "scene/resources/entity_definition.h"
+#include "editor/import/3d/resource_importer_scene.h"
 
-class Entity3D : public Node3D {
-	GDCLASS(Entity3D, Node3D);
-
-	Ref<EntityDefinition> definition;
-	Dictionary entity_properties;
-	ObjectID instance_id;
-	bool rebuild_pending = false;
-	bool dirty = true;
-	bool invalid_root = false;
-	bool recursive_definition = false;
-	bool invalid_entity_property = false;
-
-	void _queue_rebuild();
-	void _rebuild();
-
-protected:
-	static void _bind_methods();
-	void _notification(int p_what);
+class EditorTrenchBroomImporter : public EditorSceneFormatImporter {
+	GDCLASS(EditorTrenchBroomImporter, EditorSceneFormatImporter);
 
 public:
-	void set_definition(const Ref<EntityDefinition> &p_definition);
-	Ref<EntityDefinition> get_definition() const;
-	void set_entity_properties(const Dictionary &p_properties);
-	Dictionary get_entity_properties() const;
-	PackedStringArray get_configuration_warnings() const override;
+	void get_extensions(List<String> *r_extensions) const override;
+	void get_import_options(const String &p_path, List<ResourceImporter::ImportOption> *r_options) override;
+	Node *import_scene(const String &p_path, uint32_t p_flags, const HashMap<StringName, Variant> &p_options, List<String> *r_missing_deps, Error *r_err = nullptr) override;
 };

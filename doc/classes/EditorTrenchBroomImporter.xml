@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="EditorTrenchBroomImporter" inherits="EditorSceneFormatImporter" api_type="editor" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../class.xsd">
+	<brief_description>
+		Imports TrenchBroom maps as 3D scenes.
+	</brief_description>
+	<description>
+		Built-in scene importer for Standard and Valve 220 [code].map[/code] files. The first entity must be the single, untransformed [code]worldspawn[/code]. Convex brushes become meshes and static convex colliders. Point and brush entities become [Entity3D] placements, resolving classnames through configured [EntityDefinition] resources. Unknown classnames are preserved as placements without a definition.
+		Import options default to the project's TrenchBroom settings. Coordinates convert from map (X, Y, Z) to Godot (X, Z, -Y), using the configured map units per meter. Texture names resolve relative to the configured texture source directories; matching material resources in the materials directory take precedence. Albedo texture dimensions determine UV normalization, with 64 by 64 used when no texture is available. Raw entity values are retained in [code]map_properties[/code] metadata. Declared enum properties are validated and stored as integers in [member Entity3D.entity_properties].
+		This importer is registered automatically. Source file changes use the editor's normal scene reimport workflow. Quake 2 and Quake 3 surface extensions, patches, and nonconvex brush geometry are unsupported.
+	</description>
+	<tutorials>
+	</tutorials>
+</class>

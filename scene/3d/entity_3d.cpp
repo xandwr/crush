@@ -58,6 +58,7 @@ void Entity3D::_rebuild() {
 	}
 	invalid_root = false;
 	recursive_definition = false;
+	invalid_entity_property = false;
 	if (definition.is_valid() && definition->get_scene().is_valid()) {
 		for (Node *ancestor = get_parent(); ancestor; ancestor = ancestor->get_parent()) {
 			Entity3D *entity = Object::cast_to<Entity3D>(ancestor);
@@ -69,6 +70,16 @@ void Entity3D::_rebuild() {
 		if (!recursive_definition) {
 			Node *instance = definition->get_scene()->instantiate();
 			if (Object::cast_to<Node3D>(instance)) {
+				TypedArray<EntityEnumProperty> properties = definition->get_enum_properties();
+				for (int i = 0; i < properties.size(); i++) {
+					Ref<EntityEnumProperty> property = properties[i];
+					if (property.is_valid()) {
+						String key = property->get_key();
+						bool valid = false;
+						instance->set(key, entity_properties.get(key, property->get_default_value()), &valid);
+						invalid_entity_property |= !valid;
+					}
+				}
 				instance_id = instance->get_instance_id();
 				add_child(instance, false, INTERNAL_MODE_BACK);
 			} else {
@@ -107,10 +118,22 @@ Ref<EntityDefinition> Entity3D::get_definition() const {
 	return definition;
 }
 
+void Entity3D::set_entity_properties(const Dictionary &p_properties) {
+	entity_properties = p_properties.duplicate(true);
+	_queue_rebuild();
+}
+
+Dictionary Entity3D::get_entity_properties() const {
+	return entity_properties.duplicate(true);
+}
+
 PackedStringArray Entity3D::get_configuration_warnings() const {
 	PackedStringArray warnings = Node3D::get_configuration_warnings();
 	if (invalid_root) {
 		warnings.push_back(RTR("The entity scene must have a Node3D root."));
+	}
+	if (invalid_entity_property) {
+		warnings.push_back(RTR("An entity definition property does not exist on the instantiated scene root."));
 	}
 	if (recursive_definition) {
 		warnings.push_back(RTR("The entity definition is already used by an ancestor Entity3D. Recursive instantiation is disabled."));
@@ -121,5 +144,8 @@ PackedStringArray Entity3D::get_configuration_warnings() const {
 void Entity3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_definition", "definition"), &Entity3D::set_definition);
 	ClassDB::bind_method(D_METHOD("get_definition"), &Entity3D::get_definition);
+	ClassDB::bind_method(D_METHOD("set_entity_properties", "properties"), &Entity3D::set_entity_properties);
+	ClassDB::bind_method(D_METHOD("get_entity_properties"), &Entity3D::get_entity_properties);
+	ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "entity_properties"), "set_entity_properties", "get_entity_properties");
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "definition", PROPERTY_HINT_RESOURCE_TYPE, "EntityDefinition"), "set_definition", "get_definition");
 }

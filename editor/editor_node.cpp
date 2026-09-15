@@ -61,12 +61,12 @@
 #include "editor/docks/filesystem_dock.h"
 #include "editor/docks/groups_dock.h"
 #include "editor/docks/history_dock.h"
-#include "editor/docks/trenchbroom_dock.h"
-#include "editor/docks/trenchbroom_settings_inspector.h"
 #include "editor/docks/import_dock.h"
 #include "editor/docks/inspector_dock.h"
 #include "editor/docks/scene_tree_dock.h"
 #include "editor/docks/signals_dock.h"
+#include "editor/docks/trenchbroom_dock.h"
+#include "editor/docks/trenchbroom_settings_inspector.h"
 #include "editor/editor_data.h"
 #include "editor/editor_interface.h"
 #include "editor/editor_log.h"
@@ -92,6 +92,7 @@
 #include "editor/gui/progress_dialog.h"
 #include "editor/gui/window_wrapper.h"
 #include "editor/import/3d/editor_import_collada.h"
+#include "editor/import/3d/editor_importer_trenchbroom.h"
 #include "editor/import/3d/resource_importer_obj.h"
 #include "editor/import/3d/resource_importer_scene.h"
 #include "editor/import/3d/scene_import_settings.h"
@@ -8593,6 +8594,10 @@ EditorNode::EditorNode() {
 			Ref<EditorOBJImporter> import_obj2;
 			import_obj2.instantiate();
 			ResourceImporterScene::add_scene_importer(import_obj2);
+
+			Ref<EditorTrenchBroomImporter> import_map;
+			import_map.instantiate();
+			ResourceImporterScene::add_scene_importer(import_map);
 
 			Ref<EditorSceneFormatImporterESCN> import_escn;
 			import_escn.instantiate();
