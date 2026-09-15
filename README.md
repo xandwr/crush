@@ -1,4 +1,4 @@
-# godot but cooler
+# Crush Engine
 
 it's the `4.7` branch of Godot upstream, with a few custom rendering features.
 
