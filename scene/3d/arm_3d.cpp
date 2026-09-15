@@ -46,13 +46,13 @@ Arm3D::~Arm3D() {
 
 bool Arm3D::_sample_targets(Vector<Vector3> &r_points) {
 	Node3D *shoulder = shoulder_target.is_empty() ? nullptr : Object::cast_to<Node3D>(get_node_or_null(shoulder_target));
-	Node3D *hand = hand_target.is_empty() ? nullptr : Object::cast_to<Node3D>(get_node_or_null(hand_target));
-	bool valid = shoulder && hand && shoulder->is_inside_tree() && hand->is_inside_tree();
+	Node3D *hand = !hand_target_enabled || hand_target.is_empty() ? nullptr : Object::cast_to<Node3D>(get_node_or_null(hand_target));
+	bool valid = shoulder && shoulder->is_inside_tree() && (!hand_target_enabled || (hand && hand->is_inside_tree()));
 	Transform3D shoulder_transform;
 	Vector3 hand_position;
 	if (valid) {
 		shoulder_transform = shoulder->get_global_transform();
-		hand_position = hand->get_global_position();
+		hand_position = hand ? hand->get_global_position() : Vector3();
 		valid = shoulder_transform.is_finite() && hand_position.is_finite() && !Math::is_zero_approx(shoulder_transform.basis.determinant());
 	}
 	if (valid != targets_valid) {
@@ -63,13 +63,20 @@ bool Arm3D::_sample_targets(Vector<Vector3> &r_points) {
 		initialized = false;
 		return false;
 	}
-	if (shoulder_id != shoulder->get_instance_id() || hand_id != hand->get_instance_id()) {
+	ObjectID sampled_hand_id = hand ? hand->get_instance_id() : ObjectID();
+	if (shoulder_id != shoulder->get_instance_id() || hand_id != sampled_hand_id) {
 		shoulder_id = shoulder->get_instance_id();
-		hand_id = hand->get_instance_id();
+		hand_id = sampled_hand_id;
 		initialized = false;
 		previous_bend = Vector3();
 	}
 	Vector3 start = shoulder_transform.origin;
+	if (!hand_target_enabled) {
+		Vector3 down = gravity.length_squared() > CMP_EPSILON * CMP_EPSILON ? gravity.normalized() : Vector3(0, -1, 0);
+		r_points = { start, start + down * upper_arm_length, start + down * (upper_arm_length + forearm_length) };
+		reach_limited = false;
+		return true;
+	}
 	Vector3 separation = hand_position - start;
 	real_t distance = separation.length();
 	if (!Math::is_finite(distance)) {
@@ -132,7 +139,7 @@ void Arm3D::_reset(const Vector<Vector3> &p_points) {
 	solver.reset(p_points, true);
 	_configure_solver();
 	for (int i : { 0, 2 }) {
-		solver.particles.write[i].attached = true;
+		solver.particles.write[i].attached = i == 0 || hand_target_enabled;
 		solver.particles.write[i].target = p_points[i];
 	}
 	previous_points = p_points;
@@ -167,7 +174,7 @@ void Arm3D::_advance(real_t p_delta) {
 		for (int i : { 0, 2 }) {
 			solver.particles.write[i].target = target_points[i].lerp(points[i], fraction);
 		}
-		if (elbow_stiffness > 0) {
+		if (hand_target_enabled && elbow_stiffness > 0) {
 			solver.pose = points;
 			solver.pose.write[1] = target_points[1].lerp(points[1], fraction);
 		} else {
@@ -326,10 +333,14 @@ PackedStringArray Arm3D::get_configuration_warnings() const {
 	if (!is_inside_tree()) {
 		return warnings;
 	}
-	for (const NodePath &path : { shoulder_target, hand_target }) {
+	Vector<NodePath> required_targets = { shoulder_target };
+	if (hand_target_enabled) {
+		required_targets.push_back(hand_target);
+	}
+	for (const NodePath &path : required_targets) {
 		Node3D *target = path.is_empty() ? nullptr : Object::cast_to<Node3D>(get_node_or_null(path));
 		if (!target || !target->is_inside_tree()) {
-			warnings.push_back(RTR("Assign both a shoulder target and a hand target to Node3D nodes. Arm3D is hidden until both targets are available."));
+			warnings.push_back(RTR("Assign a shoulder target and, when hand target tracking is enabled, a hand target to Node3D nodes. Arm3D is hidden until required targets are available."));
 			break;
 		}
 	}
@@ -345,6 +356,14 @@ void Arm3D::set_shoulder_target(NodePath p_value) {
 		return;
 	}
 	shoulder_target = p_value;
+	_settings_changed(true);
+}
+
+void Arm3D::set_hand_target_enabled(bool p_enabled) {
+	if (hand_target_enabled == p_enabled) {
+		return;
+	}
+	hand_target_enabled = p_enabled;
 	_settings_changed(true);
 }
 
@@ -534,6 +553,9 @@ void Arm3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_shoulder_target", "value"), &Arm3D::set_shoulder_target);
 	ClassDB::bind_method(D_METHOD("get_shoulder_target"), &Arm3D::get_shoulder_target);
 	ADD_PROPERTY(PropertyInfo(Variant::NODE_PATH, "shoulder_target", PROPERTY_HINT_NODE_PATH_VALID_TYPES, "Node3D"), "set_shoulder_target", "get_shoulder_target");
+	ClassDB::bind_method(D_METHOD("set_hand_target_enabled", "enabled"), &Arm3D::set_hand_target_enabled);
+	ClassDB::bind_method(D_METHOD("is_hand_target_enabled"), &Arm3D::is_hand_target_enabled);
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "hand_target_enabled"), "set_hand_target_enabled", "is_hand_target_enabled");
 	ClassDB::bind_method(D_METHOD("set_hand_target", "value"), &Arm3D::set_hand_target);
 	ClassDB::bind_method(D_METHOD("get_hand_target"), &Arm3D::get_hand_target);
 	ADD_PROPERTY(PropertyInfo(Variant::NODE_PATH, "hand_target", PROPERTY_HINT_NODE_PATH_VALID_TYPES, "Node3D"), "set_hand_target", "get_hand_target");

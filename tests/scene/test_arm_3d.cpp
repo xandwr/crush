@@ -61,6 +61,34 @@ struct Fixture {
 	void tick(real_t p_delta) { SceneTree::get_singleton()->physics_process(p_delta); }
 };
 
+TEST_CASE("[SceneTree][Arm3D] Disabled hand tracking leaves a freely swinging arm") {
+	Fixture f;
+	f.arm->set_hand_target_enabled(false);
+	const NodePath saved_target = f.arm->get_hand_target();
+	Vector<Vector3> points = f.arm->get_joint_positions();
+	REQUIRE(points.size() == 3);
+	CHECK(points[2].y == doctest::Approx(-(f.arm->get_upper_arm_length() + f.arm->get_forearm_length())));
+	f.hand->set_position(Vector3(100, 100, 100));
+	f.arm->apply_elbow_impulse(Vector3(2, 0, 0));
+	for (int i = 0; i < 12; i++) {
+		f.tick(1.0 / 60);
+	}
+	points = f.arm->get_joint_positions();
+	CHECK(points[0] == f.shoulder->get_global_position());
+	CHECK(points[2].x > 0.01);
+	CHECK(points[0].distance_to(points[1]) == doctest::Approx(f.arm->get_upper_arm_length()).epsilon(0.01));
+	CHECK(points[1].distance_to(points[2]) == doctest::Approx(f.arm->get_forearm_length()).epsilon(0.01));
+	CHECK(f.arm->get_hand_target() == saved_target);
+	f.arm->set_hand_target(NodePath());
+	f.arm->reset_simulation();
+	CHECK(f.arm->get_joint_positions().size() == 3);
+	CHECK(f.arm->get_configuration_warnings().is_empty());
+	f.arm->set_hand_target(saved_target);
+	f.hand->set_position(Vector3(0, 0, -0.7));
+	f.arm->set_hand_target_enabled(true);
+	CHECK(f.arm->get_joint_positions()[2].distance_to(f.hand->get_global_position()) < 0.00001);
+}
+
 TEST_CASE("[SceneTree][Arm3D] Two lengths, shoulder orientation and exact targets") {
 	Fixture f;
 	f.arm->set_upper_arm_length(0.5);

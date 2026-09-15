@@ -52,6 +52,7 @@ class Arm3D : public GeometryInstance3D {
 	double dropped_time = 0;
 	NodePath shoulder_target = NodePath();
 	NodePath hand_target = NodePath();
+	bool hand_target_enabled = true;
 	real_t upper_arm_length = 0.46;
 	real_t forearm_length = 0.45;
 	Vector3 elbow_direction = Vector3(0, -1, 0);
@@ -85,6 +86,8 @@ protected:
 public:
 	void set_shoulder_target(NodePath p_value);
 	NodePath get_shoulder_target() const { return shoulder_target; }
+	void set_hand_target_enabled(bool p_enabled);
+	bool is_hand_target_enabled() const { return hand_target_enabled; }
 	void set_hand_target(NodePath p_value);
 	NodePath get_hand_target() const { return hand_target; }
 	void set_upper_arm_length(real_t p_value);
