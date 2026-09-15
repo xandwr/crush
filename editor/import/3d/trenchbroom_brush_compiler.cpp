@@ -36,7 +36,7 @@
 
 namespace {
 Vector3 convert_point(const Vector3 &p_point, real_t p_scale) {
-	return Vector3(p_point.x, p_point.z, -p_point.y) * p_scale;
+	return Vector3(p_point.y, p_point.z, p_point.x) * p_scale;
 }
 struct AngularVertex {
 	int index;

@@ -53,6 +53,7 @@ public:
 	// Plane point order must produce outward normals. Open, duplicate, redundant,
 	// and degenerate planes are rejected; tolerance is measured in map units.
 	// Each face becomes a named surface. Unresolved materials use 64x64 texel UVs.
-	// Coordinates convert from map (X, Y, Z) to Godot (X, Z, -Y).
+	// Coordinates convert from map (X, Y, Z) to Godot (Y, Z, X), matching
+	// existing Godot TrenchBroom projects.
 	static Error compile(const TrenchBroomMapParser::Brush &p_brush, TrenchBroomMapParser::Format p_format, const Options &p_options, Result &r_result, TrenchBroomMapParser::Diagnostic &r_diagnostic);
 };

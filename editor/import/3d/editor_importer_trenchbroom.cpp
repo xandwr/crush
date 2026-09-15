@@ -335,21 +335,22 @@ Node *EditorTrenchBroomImporter::import_scene(const String &p_path, uint32_t p_f
 			if (!read_numbers(entity.properties["angles"], 3, angles)) {
 				return fail(ERR_INVALID_DATA, "Invalid entity angles.", entity.line);
 			}
-			orientation = Basis(Vector3(0, 1, 0), Math::deg_to_rad(Math::fmod(angles.y, real_t(360)))) *
-					Basis(Vector3(0, 0, -1), Math::deg_to_rad(Math::fmod(angles.x, real_t(360)))) *
-					Basis(Vector3(1, 0, 0), Math::deg_to_rad(Math::fmod(angles.z, real_t(360))));
+			orientation = Basis::from_euler(Vector3(
+					Math::deg_to_rad(Math::fmod(-angles.x, real_t(360))),
+					Math::deg_to_rad(Math::fmod(angles.y + 180, real_t(360))),
+					Math::deg_to_rad(Math::fmod(-angles.z, real_t(360)))));
 		} else if (entity.properties.has("angle")) {
 			Vector3 angle;
 			if (!read_numbers(entity.properties["angle"], 1, angle)) {
 				return fail(ERR_INVALID_DATA, "Invalid entity angle.", entity.line);
 			}
 			if (angle.x == -1 || angle.x == -2) {
-				orientation = Basis(Vector3(0, 0, 1), angle.x == -1 ? Math::PI / 2 : -Math::PI / 2);
+				orientation = Basis::from_euler(Vector3(angle.x == -1 ? Math::PI / 2 : -Math::PI / 2, Math::PI, 0));
 			} else {
-				orientation = Basis(Vector3(0, 1, 0), Math::deg_to_rad(Math::fmod(angle.x, real_t(360))));
+				orientation = Basis(Vector3(0, 1, 0), Math::deg_to_rad(Math::fmod(angle.x + 180, real_t(360))));
 			}
 		}
-		Vector3 position = Vector3(origin.x, origin.z, -origin.y) * compiler_options.unit_scale;
+		Vector3 position = Vector3(origin.y, origin.z, origin.x) * compiler_options.unit_scale;
 		if (!position.is_finite()) {
 			return fail(ERR_INVALID_DATA, "Entity origin exceeds numeric range after scaling.", entity.line);
 		}

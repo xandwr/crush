@@ -81,7 +81,7 @@ TEST_CASE("[Editor][TrenchBroomBrushCompiler] Cube mesh collision and material")
 	CHECK(result.mesh->get_surface_count() == 6);
 	CHECK(result.mesh->surface_get_name(0) == "stone/floor");
 	CHECK(result.mesh->surface_get_material(0) == material.material);
-	CHECK(result.mesh->get_aabb().position.is_equal_approx(Vector3(0, 0, -1)));
+	CHECK(result.mesh->get_aabb().position.is_equal_approx(Vector3(0, 0, 0)));
 	CHECK(result.mesh->get_aabb().size.distance_to(Vector3(1, 1, 1)) < 0.0001);
 	REQUIRE(result.collision.is_valid());
 	CHECK(result.collision->get_points().size() == 8);
@@ -109,7 +109,7 @@ TEST_CASE("[Editor][TrenchBroomBrushCompiler] Cube mesh collision and material")
 	PackedVector3Array positions = arrays[Mesh::ARRAY_VERTEX];
 	PackedVector2Array uvs = arrays[Mesh::ARRAY_TEX_UV];
 	for (int i = 0; i < positions.size(); i++) {
-		Vector3 map_point(positions[i].x * 32, -positions[i].z * 32, positions[i].y * 32);
+		Vector3 map_point(positions[i].z * 32, positions[i].x * 32, positions[i].y * 32);
 		CHECK(uvs[i].is_equal_approx(Vector2((map_point.y / 0.5 + 8) / 128, (map_point.x / -2 - 4) / 32)));
 	}
 }
@@ -144,7 +144,7 @@ TEST_CASE("[Editor][TrenchBroomBrushCompiler] Valve axes ignore serialized rotat
 		PackedVector3Array positions = arrays[Mesh::ARRAY_VERTEX];
 		PackedVector2Array uvs = arrays[Mesh::ARRAY_TEX_UV];
 		for (int i = 0; i < positions.size(); i++) {
-			Vector3 point(positions[i].x, -positions[i].z, positions[i].y);
+			Vector3 point(positions[i].z, positions[i].x, positions[i].y);
 			CHECK(uvs[i].is_equal_approx((Vector2(brush.faces[surface].u_axis.dot(point), -point.y) / Vector2(-2, 4) + Vector2(8, -4)) / 64));
 		}
 	}
@@ -169,7 +169,7 @@ TEST_CASE("[Editor][TrenchBroomBrushCompiler] Sloped wedge") {
 	CHECK(result.mesh->surface_get_name(4) == "slope");
 	Array arrays = result.mesh->surface_get_arrays(4);
 	PackedVector3Array normals = arrays[Mesh::ARRAY_NORMAL];
-	CHECK(normals[0].distance_to(Vector3(1, 1, 0).normalized()) < 0.0001);
+	CHECK(normals[0].distance_to(Vector3(0, 1, 1).normalized()) < 0.0001);
 }
 TEST_CASE("[Editor][TrenchBroomBrushCompiler] Invalid brushes clear previous output") {
 	Compiler::Options options;

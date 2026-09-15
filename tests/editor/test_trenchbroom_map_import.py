@@ -34,15 +34,15 @@ func run() -> void:
 	var positions: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
 	var uvs: PackedVector2Array = arrays[Mesh.ARRAY_TEX_UV]
 	for i in positions.size():
-		check(uvs[i].distance_to(Vector2(positions[i].x * 16, positions[i].z * 8)) < 0.001, "UVs use actual 2x4 texture size: " + str(positions[i]) + " " + str(uvs[i]))
+		check(uvs[i].distance_to(Vector2(positions[i].z * 16, -positions[i].x * 8)) < 0.001, "UVs use actual 2x4 texture size: " + str(positions[i]) + " " + str(uvs[i]))
 	var collision: CollisionShape3D = scene.get_node("World_0/Brush_0/Body/Collision")
 	check(collision.shape is ConvexPolygonShape3D, "Convex collider imported")
 	check(collision.shape.points.size() == 8, "Eight collision vertices")
 	check(collision.shape.margin == 0, "Brush collision margin preserved")
 	var entity: Entity3D = scene.get_node("ent_test_1")
 	check(entity.definition.classname == "ent_test", "Definition resolved")
-	check(entity.position.is_equal_approx(Vector3(0.5, 1.5, -1)), "Entity origin converted")
-	check(entity.basis.x.is_equal_approx(Vector3(0, 0, -1)), "Yaw converted")
+	check(entity.position.is_equal_approx(Vector3(1, 1.5, 0.5)), "Entity origin converted")
+	check(entity.basis.x.is_equal_approx(Vector3(0, 0, 1)), "Yaw converted")
 	check(entity.entity_properties.team == 2, "Enum integer preserved")
 	check(entity.entity_properties.custom == "keep me", "Unknown properties retained")
 	check(entity.get_meta("map_properties").team == "2", "Raw properties retained")
@@ -85,7 +85,7 @@ func run() -> void:
 	var updated: PackedScene = ResourceLoader.load("res://standard.map", "", ResourceLoader.CACHE_MODE_IGNORE)
 	var updated_scene := updated.instantiate()
 	check(updated_scene.get_node("ent_test_1").entity_properties.team == 1, "Map edit reimports enum")
-	check(updated_scene.get_node("ent_test_1").position.is_equal_approx(Vector3(4, 1.5, -1)), "Map edit reimports origin")
+	check(updated_scene.get_node("ent_test_1").position.is_equal_approx(Vector3(1, 1.5, 4)), "Map edit reimports origin")
 	var updated_mesh: MeshInstance3D = updated_scene.get_node("World_0/Brush_0/Mesh")
 	check(updated_mesh.mesh.get_aabb().size.distance_to(Vector3(2, 2, 2)) < 0.001, "Map edit recompiles brush geometry")
 	updated_scene.free()
@@ -136,10 +136,10 @@ func run() -> void:
 	check(entity.get_child(0, true).get_meta("team_on_enter") == 1, "Runtime Team applied before tree entry")
 	await physics_frame
 	await process_frame
-	var query := PhysicsRayQueryParameters3D.create(Vector3(0.5, 3, -0.5), Vector3(0.5, -1, -0.5))
+	var query := PhysicsRayQueryParameters3D.create(Vector3(0.5, 3, 0.5), Vector3(0.5, -1, 0.5))
 	var hit: Dictionary = scene.get_world_3d().direct_space_state.intersect_ray(query)
 	check(not hit.is_empty(), "Runtime brush collision raycast hits")
-	check(hit.position.distance_to(Vector3(0.5, 2, -0.5)) < 0.001, "Runtime collision matches brush top")
+	check(hit.position.distance_to(Vector3(0.5, 2, 0.5)) < 0.001, "Runtime collision matches brush top")
 	scene.free()
 	print("TrenchBroom runtime scene checks passed")
 	quit()
