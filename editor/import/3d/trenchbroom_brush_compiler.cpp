@@ -98,6 +98,15 @@ Error TrenchBroomBrushCompiler::compile(const TrenchBroomMapParser::Brush &p_bru
 		planes.push_back(plane);
 	}
 	Vector<Vector3> vertices;
+	Vector<Vector3> inverted_vertices;
+	auto add_unique = [&](Vector<Vector3> &r_vertices, const Vector3 &p_point) {
+		for (const Vector3 &vertex : r_vertices) {
+			if (vertex.distance_to(p_point) <= p_options.tolerance) {
+				return;
+			}
+		}
+		r_vertices.push_back(p_point);
+	};
 	for (int i = 0; i < planes.size(); i++) {
 		for (int j = i + 1; j < planes.size(); j++) {
 			for (int k = j + 1; k < planes.size(); k++) {
@@ -106,26 +115,25 @@ Error TrenchBroomBrushCompiler::compile(const TrenchBroomMapParser::Brush &p_bru
 					continue;
 				}
 				bool inside = true;
+				bool inverted_inside = true;
 				for (const Plane &plane : planes) {
-					if (plane.distance_to(point) > p_options.tolerance) {
-						inside = false;
-						break;
-					}
+					real_t distance = plane.distance_to(point);
+					inside &= distance <= p_options.tolerance;
+					inverted_inside &= distance >= -p_options.tolerance;
 				}
-				if (!inside) {
-					continue;
+				if (inside) {
+					add_unique(vertices, point);
 				}
-				bool duplicate = false;
-				for (const Vector3 &vertex : vertices) {
-					if (vertex.distance_to(point) <= p_options.tolerance) {
-						duplicate = true;
-						break;
-					}
-				}
-				if (!duplicate) {
-					vertices.push_back(point);
+				if (inverted_inside) {
+					add_unique(inverted_vertices, point);
 				}
 			}
+		}
+	}
+	if (vertices.size() < 4 && inverted_vertices.size() >= 4) {
+		vertices = inverted_vertices;
+		for (Plane &plane : planes) {
+			plane = -plane;
 		}
 	}
 	if (vertices.size() < 4) {

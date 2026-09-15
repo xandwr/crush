@@ -113,6 +113,18 @@ TEST_CASE("[Editor][TrenchBroomBrushCompiler] Cube mesh collision and material")
 		CHECK(uvs[i].is_equal_approx(Vector2((map_point.y / 0.5 + 8) / 128, (map_point.x / -2 - 4) / 32)));
 	}
 }
+TEST_CASE("[Editor][TrenchBroomBrushCompiler] Reversed TrenchBroom plane orientation") {
+	Parser::Brush brush = cube();
+	for (Parser::Face &face : brush.faces) {
+		SWAP(face.points[0], face.points[1]);
+	}
+	Compiler::Result result;
+	Parser::Diagnostic diagnostic;
+	REQUIRE(Compiler::compile(brush, Parser::STANDARD, Compiler::Options(), result, diagnostic) == OK);
+	CHECK(result.mesh->get_surface_count() == 6);
+	CHECK(result.collision->get_points().size() == 8);
+}
+
 TEST_CASE("[Editor][TrenchBroomBrushCompiler] Valve axes ignore serialized rotation") {
 	Parser::Brush brush = cube();
 	for (auto &face : brush.faces) {
