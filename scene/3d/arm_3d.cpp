@@ -210,25 +210,27 @@ void Arm3D::_render(bool p_interpolate) {
 	if (elbow_roundness > 0) {
 		Vector3 entry = points[1].lerp(points[0], elbow_roundness * 0.5);
 		Vector3 exit = points[1].lerp(points[2], elbow_roundness * 0.5);
+		real_t entry_radius = Math::lerp(upper_arm_radius, upper_arm_end_radius, real_t(1) - elbow_roundness * real_t(0.5));
+		real_t exit_radius = Math::lerp(forearm_radius, forearm_end_radius, elbow_roundness * real_t(0.5));
 		for (int i = 0; i <= 8; i++) {
 			real_t t = real_t(i) / 8;
 			curve.push_back(entry.lerp(points[1], t).lerp(points[1].lerp(exit, t), t));
-			radii.push_back(Math::lerp(upper_arm_radius, forearm_radius, t * t * (3 - 2 * t)));
+			radii.push_back(Math::lerp(entry_radius, exit_radius, t * t * (3 - 2 * t)));
 		}
 	} else {
-		if (upper_arm_radius != forearm_radius) {
+		if (upper_arm_end_radius != forearm_radius) {
 			curve.push_back(points[1].lerp(points[0], 0.1));
-			radii.push_back(upper_arm_radius);
+			radii.push_back(Math::lerp(upper_arm_radius, upper_arm_end_radius, real_t(0.9)));
 		}
 		curve.push_back(points[1]);
-		radii.push_back((upper_arm_radius + forearm_radius) * 0.5);
-		if (upper_arm_radius != forearm_radius) {
+		radii.push_back((upper_arm_end_radius + forearm_radius) * 0.5);
+		if (upper_arm_end_radius != forearm_radius) {
 			curve.push_back(points[1].lerp(points[2], 0.1));
-			radii.push_back(forearm_radius);
+			radii.push_back(Math::lerp(forearm_radius, forearm_end_radius, real_t(0.1)));
 		}
 	}
 	curve.push_back(points[2]);
-	radii.push_back(forearm_radius);
+	radii.push_back(forearm_end_radius);
 	Transform3D to_local = world.affine_inverse();
 	Vector<Vector3> local_points;
 	for (const Vector3 &point : curve) {
@@ -445,11 +447,13 @@ void Arm3D::set_stretch_compliance(real_t p_value) {
 
 void Arm3D::set_radius(real_t p_value) {
 	ERR_FAIL_COND(!Math::is_finite(p_value) || p_value <= 0 || p_value > 1000000);
-	if (upper_arm_radius == p_value && forearm_radius == p_value) {
+	if (upper_arm_radius == p_value && upper_arm_end_radius == p_value && forearm_radius == p_value && forearm_end_radius == p_value) {
 		return;
 	}
 	upper_arm_radius = p_value;
+	upper_arm_end_radius = p_value;
 	forearm_radius = p_value;
+	forearm_end_radius = p_value;
 	_settings_changed(false);
 }
 
@@ -468,6 +472,24 @@ void Arm3D::set_forearm_radius(real_t p_value) {
 		return;
 	}
 	forearm_radius = p_value;
+	_settings_changed(false);
+}
+
+void Arm3D::set_upper_arm_end_radius(real_t p_value) {
+	ERR_FAIL_COND(!Math::is_finite(p_value) || p_value <= 0 || p_value > 1000000);
+	if (upper_arm_end_radius == p_value) {
+		return;
+	}
+	upper_arm_end_radius = p_value;
+	_settings_changed(false);
+}
+
+void Arm3D::set_forearm_end_radius(real_t p_value) {
+	ERR_FAIL_COND(!Math::is_finite(p_value) || p_value <= 0 || p_value > 1000000);
+	if (forearm_end_radius == p_value) {
+		return;
+	}
+	forearm_end_radius = p_value;
 	_settings_changed(false);
 }
 
@@ -555,9 +577,15 @@ void Arm3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_upper_arm_radius", "value"), &Arm3D::set_upper_arm_radius);
 	ClassDB::bind_method(D_METHOD("get_upper_arm_radius"), &Arm3D::get_upper_arm_radius);
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "upper_arm_radius", PROPERTY_HINT_RANGE, "0.00001,10,0.001,or_greater"), "set_upper_arm_radius", "get_upper_arm_radius");
+	ClassDB::bind_method(D_METHOD("set_upper_arm_end_radius", "value"), &Arm3D::set_upper_arm_end_radius);
+	ClassDB::bind_method(D_METHOD("get_upper_arm_end_radius"), &Arm3D::get_upper_arm_end_radius);
+	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "upper_arm_end_radius", PROPERTY_HINT_RANGE, "0.00001,10,0.001,or_greater"), "set_upper_arm_end_radius", "get_upper_arm_end_radius");
 	ClassDB::bind_method(D_METHOD("set_forearm_radius", "value"), &Arm3D::set_forearm_radius);
 	ClassDB::bind_method(D_METHOD("get_forearm_radius"), &Arm3D::get_forearm_radius);
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "forearm_radius", PROPERTY_HINT_RANGE, "0.00001,10,0.001,or_greater"), "set_forearm_radius", "get_forearm_radius");
+	ClassDB::bind_method(D_METHOD("set_forearm_end_radius", "value"), &Arm3D::set_forearm_end_radius);
+	ClassDB::bind_method(D_METHOD("get_forearm_end_radius"), &Arm3D::get_forearm_end_radius);
+	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "forearm_end_radius", PROPERTY_HINT_RANGE, "0.00001,10,0.001,or_greater"), "set_forearm_end_radius", "get_forearm_end_radius");
 	ClassDB::bind_method(D_METHOD("set_radial_segments", "value"), &Arm3D::set_radial_segments);
 	ClassDB::bind_method(D_METHOD("get_radial_segments"), &Arm3D::get_radial_segments);
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "radial_segments", PROPERTY_HINT_RANGE, "3,64,1"), "set_radial_segments", "get_radial_segments");

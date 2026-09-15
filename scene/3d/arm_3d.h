@@ -63,7 +63,9 @@ class Arm3D : public GeometryInstance3D {
 	Vector3 gravity = Vector3(0, -9.8, 0);
 	real_t stretch_compliance = 0;
 	real_t upper_arm_radius = 0.065;
+	real_t upper_arm_end_radius = 0.065;
 	real_t forearm_radius = 0.065;
+	real_t forearm_end_radius = 0.065;
 	int radial_segments = 12;
 	int solver_iterations = 12;
 	real_t max_substep_duration = 1.0 / 120;
@@ -109,8 +111,12 @@ public:
 	real_t get_radius() const { return upper_arm_radius; }
 	void set_upper_arm_radius(real_t p_value);
 	real_t get_upper_arm_radius() const { return upper_arm_radius; }
+	void set_upper_arm_end_radius(real_t p_value);
+	real_t get_upper_arm_end_radius() const { return upper_arm_end_radius; }
 	void set_forearm_radius(real_t p_value);
 	real_t get_forearm_radius() const { return forearm_radius; }
+	void set_forearm_end_radius(real_t p_value);
+	real_t get_forearm_end_radius() const { return forearm_end_radius; }
 	void set_radial_segments(int p_value);
 	int get_radial_segments() const { return radial_segments; }
 	void set_solver_iterations(int p_value);

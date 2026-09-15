@@ -208,6 +208,8 @@ TEST_CASE("[SceneTree][Arm3D] Independent radii preserve joints and cap sizes") 
 	Vector<Vector3> joints = f.arm->get_joint_positions();
 	f.arm->set_upper_arm_radius(0.12);
 	f.arm->set_forearm_radius(0.035);
+	f.arm->set_upper_arm_end_radius(0.08);
+	f.arm->set_forearm_end_radius(0.02);
 	CHECK(f.arm->get_joint_positions() == joints);
 	for (real_t roundness : { real_t(0), real_t(0.6) }) {
 		f.arm->set_elbow_roundness(roundness);
@@ -219,7 +221,11 @@ TEST_CASE("[SceneTree][Arm3D] Independent radii preserve joints and cap sizes") 
 		int stride = f.arm->get_radial_segments() + 1;
 		for (int side = 0; side < stride; side++) {
 			CHECK(vertices[side].distance_to(centerline[0]) == doctest::Approx(0.12));
-			CHECK(vertices[(centerline.size() - 1) * stride + side].distance_to(centerline[centerline.size() - 1]) == doctest::Approx(0.035));
+			CHECK(vertices[(centerline.size() - 1) * stride + side].distance_to(centerline[centerline.size() - 1]) == doctest::Approx(0.02));
+			real_t entry_radius = roundness == 0 ? 0.084 : 0.092;
+			real_t exit_radius = roundness == 0 ? 0.0335 : 0.0305;
+			CHECK(vertices[stride + side].distance_to(centerline[1]) == doctest::Approx(entry_radius));
+			CHECK(vertices[(centerline.size() - 2) * stride + side].distance_to(centerline[centerline.size() - 2]) == doctest::Approx(exit_radius));
 		}
 		for (int i = 0; i < vertices.size(); i++) {
 			CHECK(vertices[i].is_finite());
@@ -235,9 +241,13 @@ TEST_CASE("[SceneTree][Arm3D] Independent radii preserve joints and cap sizes") 
 	f.arm->set("radius", 0.09);
 	CHECK(f.arm->get_upper_arm_radius() == doctest::Approx(0.09));
 	CHECK(f.arm->get_forearm_radius() == doctest::Approx(0.09));
+	CHECK(f.arm->get_upper_arm_end_radius() == doctest::Approx(0.09));
+	CHECK(f.arm->get_forearm_end_radius() == doctest::Approx(0.09));
 	ERR_PRINT_OFF;
 	f.arm->set_upper_arm_radius(-1);
 	f.arm->set_forearm_radius(Math::NaN);
+	f.arm->set_upper_arm_end_radius(0);
+	f.arm->set_forearm_end_radius(Math::INF);
 	ERR_PRINT_ON;
 	CHECK(f.arm->get_upper_arm_radius() == doctest::Approx(0.09));
 	CHECK(f.arm->get_forearm_radius() == doctest::Approx(0.09));
@@ -276,6 +286,8 @@ TEST_CASE("[SceneTree][Arm3D] Scene serialization and focused properties") {
 	f.arm->set_elbow_roundness(0.4);
 	f.arm->set_upper_arm_radius(0.1);
 	f.arm->set_forearm_radius(0.04);
+	f.arm->set_upper_arm_end_radius(0.07);
+	f.arm->set_forearm_end_radius(0.02);
 	Ref<PackedScene> packed;
 	packed.instantiate();
 	CHECK(packed->pack(f.root) == OK);
@@ -288,6 +300,8 @@ TEST_CASE("[SceneTree][Arm3D] Scene serialization and focused properties") {
 	CHECK(arm->get_elbow_roundness() == doctest::Approx(0.4));
 	CHECK(arm->get_upper_arm_radius() == doctest::Approx(0.1));
 	CHECK(arm->get_forearm_radius() == doctest::Approx(0.04));
+	CHECK(arm->get_upper_arm_end_radius() == doctest::Approx(0.07));
+	CHECK(arm->get_forearm_end_radius() == doctest::Approx(0.02));
 	CHECK(arm->get_joint_positions().size() == 3);
 	List<PropertyInfo> properties;
 	arm->get_property_list(&properties);
