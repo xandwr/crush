@@ -48,6 +48,7 @@ class Arm3D : public GeometryInstance3D {
 	ObjectID hand_id;
 	bool initialized = false;
 	bool targets_valid = false;
+	bool reach_limited = false;
 	double dropped_time = 0;
 	NodePath shoulder_target = NodePath();
 	NodePath hand_target = NodePath();

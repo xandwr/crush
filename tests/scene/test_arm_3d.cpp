@@ -85,8 +85,38 @@ TEST_CASE("[SceneTree][Arm3D] Two lengths, shoulder orientation and exact target
 		f.arm->reset_simulation();
 		points = f.arm->get_joint_positions();
 		CHECK(points[0] == f.shoulder->get_global_position());
-		CHECK(points[2] == target);
+		CHECK(points[0].distance_to(points[1]) == doctest::Approx(0.5));
+		CHECK(points[1].distance_to(points[2]) == doctest::Approx(0.3));
+		CHECK(points[0].distance_to(points[2]) <= 0.80001);
+		CHECK(f.hand->get_position() == target);
 		CHECK(points[1].is_finite());
+	}
+}
+
+TEST_CASE("[SceneTree][Arm3D] Unreachable targets preserve reach in preview and physics") {
+	for (bool simulate : { false, true }) {
+		for (real_t upper : { real_t(0.3), real_t(0.5) }) {
+			Fixture f;
+			f.arm->set_simulation_enabled(simulate);
+			f.arm->set_upper_arm_length(upper);
+			f.arm->set_forearm_length(0.5);
+			for (Vector3 target : { Vector3(50, 20, -30), Vector3(0, 0, -0.01), Vector3() }) {
+				f.hand->set_position(target);
+				f.arm->reset_simulation();
+				for (int i = 0; i < 10; i++) {
+					f.tick(1.0 / 60);
+				}
+				Vector<Vector3> points = f.arm->get_joint_positions();
+				CHECK(points[0] == f.shoulder->get_global_position());
+				CHECK(points[0].distance_to(points[1]) == doctest::Approx(upper));
+				CHECK(points[1].distance_to(points[2]) == doctest::Approx(0.5));
+				CHECK(points[0].distance_to(points[2]) <= upper + 0.50001);
+				CHECK(f.hand->get_position() == target);
+			}
+			f.hand->set_position(Vector3(0, 0, -0.6));
+			f.tick(1.0 / 60);
+			CHECK(f.arm->get_joint_positions()[2] == f.hand->get_global_position());
+		}
 	}
 }
 

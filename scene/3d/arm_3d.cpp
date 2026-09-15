@@ -78,6 +78,13 @@ bool Arm3D::_sample_targets(Vector<Vector3> &r_points) {
 	}
 	Basis orientation = shoulder_transform.basis.orthonormalized();
 	Vector3 axis = distance > CMP_EPSILON ? separation / distance : -orientation.get_column(2);
+	real_t minimum_reach = Math::abs(upper_arm_length - forearm_length);
+	real_t maximum_reach = upper_arm_length + forearm_length;
+	reach_limited = distance <= minimum_reach || distance >= maximum_reach || distance < CMP_EPSILON;
+	if (distance < minimum_reach || distance > maximum_reach) {
+		distance = CLAMP(distance, minimum_reach, maximum_reach);
+		hand_position = start + axis * distance;
+	}
 	Vector3 bend = orientation.xform(elbow_direction.normalized());
 	bend -= axis * bend.dot(axis);
 	if (bend.length_squared() < 0.0001) {
@@ -91,14 +98,13 @@ bool Arm3D::_sample_targets(Vector<Vector3> &r_points) {
 	previous_bend = bend;
 	real_t along = 0;
 	real_t height = 0;
-	if (distance >= upper_arm_length + forearm_length) {
-		along = distance * upper_arm_length / (upper_arm_length + forearm_length);
-	} else if (distance <= Math::abs(upper_arm_length - forearm_length) || distance < CMP_EPSILON) {
-		// Both endpoints remain exact even when the authored lengths cannot fit.
+	if (distance >= maximum_reach) {
+		along = upper_arm_length;
+	} else if (distance <= minimum_reach || distance < CMP_EPSILON) {
 		if (distance < CMP_EPSILON) {
-			height = (upper_arm_length + forearm_length) * 0.5;
+			height = upper_arm_length;
 		} else {
-			along = (distance + (upper_arm_length > forearm_length ? 1 : -1) * (upper_arm_length + forearm_length)) * 0.5;
+			along = upper_arm_length > forearm_length ? upper_arm_length : -upper_arm_length;
 		}
 	} else {
 		along = (upper_arm_length * upper_arm_length - forearm_length * forearm_length + distance * distance) / (2 * distance);
@@ -148,9 +154,7 @@ void Arm3D::_advance(real_t p_delta) {
 		_reset(points);
 	}
 	previous_points = get_joint_positions();
-	real_t distance = points[0].distance_to(points[2]);
-	bool unreachable = distance >= upper_arm_length + forearm_length || distance <= Math::abs(upper_arm_length - forearm_length) || distance < CMP_EPSILON;
-	if (!simulation_enabled || unreachable) {
+	if (!simulation_enabled || reach_limited) {
 		_reset(points);
 		return;
 	}
