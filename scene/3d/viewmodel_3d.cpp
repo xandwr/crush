@@ -137,7 +137,8 @@ void Viewmodel3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("is_casting_world_shadows"), &Viewmodel3D::is_casting_world_shadows);
 
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "use_viewmodel_projection"), "set_use_viewmodel_projection", "is_using_viewmodel_projection");
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "visible_to_other_cameras"), "set_visible_to_other_cameras", "is_visible_to_other_cameras");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "children_visible_to_other_cameras"), "set_visible_to_other_cameras", "is_visible_to_other_cameras");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "visible_to_other_cameras", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NONE), "set_visible_to_other_cameras", "is_visible_to_other_cameras");
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "fov", PROPERTY_HINT_RANGE, "1,179,0.1,degrees"), "set_fov", "get_fov");
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "near", PROPERTY_HINT_RANGE, "0.001,10,0.001,or_greater,exp,suffix:m"), "set_near", "get_near");
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "far", PROPERTY_HINT_RANGE, "0.01,4000,0.01,or_greater,exp,suffix:m"), "set_far", "get_far");

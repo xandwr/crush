@@ -109,7 +109,7 @@ func _ready() -> void:
 	var private_pixel := Vector2i(camera.unproject_position(Vector3(0, 0.4, -7)))
 	if image.get_pixelv(private_pixel).b > 0.4:
 		failures.append("private viewmodel leaked into reflection")
-	viewmodel.visible_to_other_cameras = true
+	viewmodel.children_visible_to_other_cameras = true
 	await settle()
 	image = capture("public_viewmodel")
 	check_color(image, camera, Vector3(0, 0.4, -7), 2, "public viewmodel")

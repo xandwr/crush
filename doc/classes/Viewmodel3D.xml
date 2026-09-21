@@ -35,8 +35,8 @@
 		<member name="use_viewmodel_projection" type="bool" setter="set_use_viewmodel_projection" getter="is_using_viewmodel_projection" default="true">
 			If [code]true[/code], visual descendants are rendered in the viewmodel pass. If [code]false[/code], they return to ordinary world rendering, including visibility from other cameras and reflection probes.
 		</member>
-		<member name="visible_to_other_cameras" type="bool" setter="set_visible_to_other_cameras" getter="is_visible_to_other_cameras" default="false">
-			If [code]true[/code], visual descendants are also rendered as ordinary geometry by other cameras and reflection probes. The owning camera continues to render them only in its viewmodel pass.
+		<member name="children_visible_to_other_cameras" type="bool" setter="set_visible_to_other_cameras" getter="is_visible_to_other_cameras" default="false">
+			If [code]true[/code], child geometry, including nested descendants, is also rendered as ordinary world geometry by other cameras, including the editor's 3D viewport camera, and reflection probes. The owning camera continues to render it only in its viewmodel pass.
 		</member>
 	</members>
 </class>

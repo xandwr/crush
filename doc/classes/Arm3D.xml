@@ -10,7 +10,8 @@
 		Simulation runs automatically on physics ticks, with bounded substeps and optional scene physics interpolation. Move targets before Arm3D's internal physics processing (for example, give the target controller an earlier [member Node.process_physics_priority]). After teleporting targets, call [method reset_simulation] to discard old velocities and interpolation history.
 		This node generates a tube with rounded end caps. It does not drive a skeleton, move either target, or push physics bodies. Optional collision resolves unpinned joint spheres against bodies on the selected physics layers; the segments between joints do not have continuous collision. Disabled simulation and boundary reach poses bypass collision.
 	</description>
-	<tutorials />
+	<tutorials>
+	</tutorials>
 	<methods>
 		<method name="clear_collision_exceptions"><return type="void" /><description>Clears all excluded physics body RIDs.</description></method>
 		<method name="remove_collision_exception"><return type="void" /><param index="0" name="rid" type="RID" /><description>Removes a previously excluded physics body RID.</description></method>
